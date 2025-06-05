@@ -1,11 +1,47 @@
 import 'dart:io';
 
+Future<void> main(List<String> args) async {
+  if (args.isEmpty) {
+    print('❌ Missing command.\nAvailable:\n'
+        '  asset <path> [ClassName]\n'
+        '  barrel <directory> [FileName]\n'
+        '  module name=... location=... [export=...]');
+    return;
+  }
+
+  final command = args.first;
+  final rest = args.sublist(1);
+
+  if (command == 'asset') {
+    final path = rest.isNotEmpty ? rest[0] : null;
+    final className = rest.length > 1 ? rest[1] : 'AppAssets';
+    if (path == null) {
+      print('❌ Usage: asset <path> [ClassName]');
+      return;
+    }
+    await generateAssets(directoryPath: path, className: className);
+  } else if (command == 'barrel') {
+    final path = rest.isNotEmpty ? rest[0] : null;
+    final fileName = rest.length > 1 ? rest[1] : 'exports';
+    if (path == null) {
+      print('❌ Usage: barrel <directory> [FileName]');
+      return;
+    }
+    await generateBarrelFile(directoryPath: path, barrelFileName: fileName);
+  } else if (command == 'module') {
+    await generateModuleFromArgs(rest);
+  } else {
+    print('❌ Unknown command: $command');
+  }
+}
+
+/// ---------- ASSET GENERATOR ----------
+
 Future<void> generateAssets({
   required String directoryPath,
   String className = 'AppAssets',
 }) async {
   final assetDir = Directory(directoryPath);
-
   if (!assetDir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
     return;
@@ -22,10 +58,10 @@ Future<void> generateAssets({
       .toList();
 
   for (var file in files) {
-    final relativePath = file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath =
+    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
     final fileName = relativePath.split('/').last;
     final varName = _toCamelCase(fileName.replaceAll(RegExp(r'\.\w+$'), ''));
-
     buffer.writeln("  static const String $varName = '$relativePath';");
   }
 
@@ -39,12 +75,13 @@ Future<void> generateAssets({
   print('✅ lib/generated/$fileName generated with ${files.length} assets.');
 }
 
+/// ---------- BARREL GENERATOR ----------
+
 Future<void> generateBarrelFile({
   required String directoryPath,
-  String barrelFileName = 'index',
+  String barrelFileName = 'exports',
 }) async {
   final dir = Directory(directoryPath);
-
   if (!dir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
     return;
@@ -61,9 +98,9 @@ Future<void> generateBarrelFile({
   dartFiles.sort((a, b) => a.path.compareTo(b.path));
 
   final buffer = StringBuffer();
-
   for (var file in dartFiles) {
-    final relativePath = file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath =
+    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
     buffer.writeln("export '$relativePath';");
   }
 
@@ -74,6 +111,147 @@ Future<void> generateBarrelFile({
   print('📦 $directoryPath/$fileName generated with ${dartFiles.length} exports.');
 }
 
+/// ---------- MODULE GENERATOR ----------
+
+Future<void> generateModuleFromArgs(List<String> args) async {
+  final argsMap = {
+    for (var e in args)
+      if (e.contains('=')) e.split('=').first: e.split('=').last
+  };
+
+  final name = argsMap['name'];
+  final location = argsMap['location'];
+  final exportPath = argsMap['export'];
+
+  if (name == null || location == null) {
+    print('❌ Missing required arguments.\nUsage:\n'
+        'dart run asset_generator module name=home location=lib/modules [export=lib/modules/exports.dart]');
+    return;
+  }
+
+  await generateModule(
+    name: name,
+    location: location,
+    exportFilePath: exportPath ?? 'lib/exports.dart',
+  );
+}
+
+Future<void> generateModule({
+  required String name,
+  required String location,
+  required String exportFilePath,
+}) async {
+  final baseDir = Directory('$location/$name');
+  final bindingDir = Directory('${baseDir.path}/bindings');
+  final controllerDir = Directory('${baseDir.path}/controller');
+  final viewDir = Directory('${baseDir.path}/view');
+
+  await bindingDir.create(recursive: true);
+  await controllerDir.create(recursive: true);
+  await viewDir.create(recursive: true);
+
+  final snake = name.toSnakeCase();
+  final pascal = name.toPascalCase();
+
+  final bindingPath = '$name/bindings/${snake}_binding.dart';
+  final controllerPath = '$name/controller/${snake}_controller.dart';
+  final viewPath = '$name/view/${snake}_page.dart';
+
+  await File('${bindingDir.path}/${snake}_binding.dart')
+      .writeAsString(_bindingTemplate(pascal));
+  await File('${controllerDir.path}/${snake}_controller.dart')
+      .writeAsString(_controllerTemplate(pascal));
+  await File('${viewDir.path}/${snake}_page.dart')
+      .writeAsString(_pageTemplate(pascal));
+
+  final exportLines = [
+    "export '$bindingPath';",
+    "export '$controllerPath';",
+    "export '$viewPath';",
+  ];
+
+  final exportFile = File(exportFilePath);
+  final exists = exportFile.existsSync();
+  final current = exists ? await exportFile.readAsString() : '';
+
+  final buffer = StringBuffer(current.trim());
+  for (final line in exportLines) {
+    if (!current.contains(line)) {
+      buffer.writeln('\n$line');
+    }
+  }
+
+  await exportFile.create(recursive: true);
+  await exportFile.writeAsString(buffer.toString().trim() + '\n');
+
+  print('✅ Module "$name" created at $location/$name');
+  print('📦 Exports added to $exportFilePath');
+}
+
+/// ---------- TEMPLATE HELPERS (Auto-import) ----------
+
+String getProjectName() {
+  final pubspec = File('pubspec.yaml');
+  if (!pubspec.existsSync()) return 'your_project';
+  final lines = pubspec.readAsLinesSync();
+  for (final line in lines) {
+    if (line.trim().startsWith('name:')) {
+      return line.split(':').last.trim();
+    }
+  }
+  return 'your_project';
+}
+
+String _bindingTemplate(String name) {
+  final project = getProjectName();
+  return '''
+import 'package:$project/exports.dart';
+
+class ${name}Binding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut(() => ${name}Controller());
+  }
+}
+''';
+}
+
+String _controllerTemplate(String name) {
+  final project = getProjectName();
+  return '''
+import 'package:$project/exports.dart';
+
+class ${name}Controller extends GetxController {
+  @override
+  void onInit() {
+    printWrapped("$name Controller initialized");
+    super.onInit();
+  }
+}
+''';
+}
+
+String _pageTemplate(String name) {
+  final project = getProjectName();
+  return '''
+import 'package:$project/exports.dart';
+
+class ${name}Page extends GetView<${name}Controller> {
+  const ${name}Page({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('$name Page')),
+      body: const Center(child: Text('Welcome to $name')),
+    );
+  }
+}
+''';
+}
+
+/// ---------- CASE CONVERSIONS ----------
+
 String _toCamelCase(String input) {
   final sanitized = input.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   final parts = sanitized.split('_');
@@ -83,9 +261,13 @@ String _toCamelCase(String input) {
 
 extension SnakeCaseExtension on String {
   String toSnakeCase() {
-    return replaceAllMapped(
-      RegExp(r'(?<=[a-z])[A-Z]'),
-          (match) => '_${match.group(0)!.toLowerCase()}',
-    ).toLowerCase();
+    return replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'),
+            (match) => '_${match.group(0)!.toLowerCase()}').toLowerCase();
+  }
+
+  String toPascalCase() {
+    return split('_')
+        .map((s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1) : '')
+        .join();
   }
 }
