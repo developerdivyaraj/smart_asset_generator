@@ -120,6 +120,22 @@ Future<void> generateModule({
   final controllerPath = '$location/$name/controller/${snake}_controller.dart';
   final viewPath = '$location/$name/view/${snake}_page.dart';
 
+  // Confirm overwrite if any file exists
+  final existingFiles = [
+    File(bindingPath),
+    File(controllerPath),
+    File(viewPath),
+  ].where((f) => f.existsSync()).toList();
+
+  if (existingFiles.isNotEmpty) {
+    stdout.write('⚠️ One or more files already exist. Overwrite? (y/n): ');
+    final response = stdin.readLineSync();
+    if (response?.toLowerCase() != 'y') {
+      print('❌ Aborted module generation.');
+      return;
+    }
+  }
+
   await File(bindingPath).writeAsString(_bindingTemplate(pascal));
   await File(controllerPath).writeAsString(_controllerTemplate(pascal));
   await File(viewPath).writeAsString(_pageTemplate(pascal));
@@ -150,6 +166,106 @@ Future<void> generateModule({
   print('✅ Module "$name" created at $location/$name');
   print('📦 Exports added to $exportFilePath');
 }
+
+/// ---------- CLONE GENERATOR ----------
+
+Future<void> cloneProject({
+  required String newProjectName,
+  required String androidPackage,
+  required String iosPackage,
+}) async {
+  final currentDir = Directory.current;
+  final oldProjectName = getProjectName();
+  final newDir = Directory('${currentDir.parent.path}/$newProjectName');
+
+  if (await newDir.exists()) {
+    print('❌ Directory already exists: ${newDir.path}');
+    return;
+  }
+
+  // 1. Copy entire project directory
+  await Process.run('cp', ['-R', currentDir.path, newDir.path]);
+
+  // 2. Replace project name in pubspec.yaml
+  final pubspecFile = File('${newDir.path}/pubspec.yaml');
+  if (await pubspecFile.exists()) {
+    final content = await pubspecFile.readAsString();
+    final updated = content.replaceFirst('name: $oldProjectName', 'name: $newProjectName');
+    await pubspecFile.writeAsString(updated);
+  }
+
+  // 3. Replace package imports and project name in all files
+  final allFiles = newDir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) =>
+  !f.path.endsWith('.png') &&
+      !f.path.endsWith('.jpg') &&
+      !f.path.endsWith('.webp') &&
+      !f.path.contains('/.git/') &&
+      !f.path.contains('/build/'));
+
+  // 4b. Rename and update android/{oldProjectName}_android.iml
+  final androidIml = File('${newDir.path}/android/${oldProjectName}_android.iml');
+  final newAndroidIml = File('${newDir.path}/android/${newProjectName}_android.iml');
+
+  if (await androidIml.exists()) {
+    final content = await androidIml.readAsString();
+    final updated = content.replaceAll(oldProjectName, newProjectName);
+    await newAndroidIml.writeAsString(updated);
+    await androidIml.delete();
+  }
+
+  for (final file in allFiles) {
+    try {
+      final content = await file.readAsString();
+      final updated = content
+          .replaceAll("package:$oldProjectName/", "package:$newProjectName/")
+          .replaceAll("com.example.$oldProjectName", androidPackage)
+          .replaceAll(oldProjectName, newProjectName);
+      await file.writeAsString(updated);
+    } catch (_) {}
+  }
+
+  // 4. Rename and update .iml file
+  final oldIml = File('${newDir.path}/$oldProjectName.iml');
+  final newIml = File('${newDir.path}/$newProjectName.iml');
+  if (await oldIml.exists()) {
+    final content = await oldIml.readAsString();
+    final updated = content.replaceAll(oldProjectName, newProjectName);
+    await newIml.writeAsString(updated);
+    await oldIml.delete();
+  }
+
+  // 5. Update Android package name
+  final androidManifest = File('${newDir.path}/android/app/src/main/AndroidManifest.xml');
+  final buildGradle = File('${newDir.path}/android/app/build.gradle');
+  for (final file in [androidManifest, buildGradle]) {
+    if (await file.exists()) {
+      var content = await file.readAsString();
+      content = content.replaceAll(RegExp(r'package="[^"]+"'), 'package="$androidPackage"');
+      content = content.replaceAll(RegExp(r'applicationId "[^"]+"'), 'applicationId "$androidPackage"');
+      await file.writeAsString(content);
+    }
+  }
+
+  // 6. Update iOS bundle identifier
+  final iosPlist = File('${newDir.path}/ios/Runner/Info.plist');
+  if (await iosPlist.exists()) {
+    var content = await iosPlist.readAsString();
+    content = content.replaceAllMapped(
+      RegExp(r'<key>CFBundleIdentifier</key>\s*<string>.*</string>'),
+          (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
+    );
+    await iosPlist.writeAsString(content);
+  }
+
+  // 7. Done
+  print('✅ Project cloned to ${newDir.path}');
+  print('📦 Android package: $androidPackage');
+  print('📦 iOS bundle ID: $iosPackage');
+}
+
 
 /// ---------- HELPERS ----------
 String getProjectName() {
@@ -186,7 +302,7 @@ import 'package:$project/exports.dart';
 class ${name}Controller extends GetxController {
   @override
   void onInit() {
-    printWrapped("$name Controller initialized");
+    print("$name Controller initialized");
     super.onInit();
   }
 }
