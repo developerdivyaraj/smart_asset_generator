@@ -1,13 +1,33 @@
 import 'package:smart_asset_generator/smart_asset_generator.dart';
 
-void main(List<String> args) {
+Future<void> main(List<String> args) async {
   if (args.isEmpty) {
-    print('❌ Usage: asset_generator <assets_path> [className]');
+    print('❌ Missing arguments.\nUsage:');
+    print('  dart run asset_generator <directory> [ClassName]');
+    print('  dart run asset_generator barrel <directory> [BarrelFileName]');
     return;
   }
 
-  final path = args[0];
-  final className = args.length > 1 ? args[1] : 'AppAssets';
+  if (args[0] == 'barrel') {
+    if (args.length < 2) {
+      print('❌ Usage for barrel: dart run asset_generator barrel <directory> [BarrelFileName]');
+      return;
+    }
 
-  generateAssets(directoryPath: path, className: className);
+    final directoryPath = args[1];
+    final barrelFileName = args.length >= 3 ? args[2] : 'imports';
+
+    await generateBarrelFile(
+      directoryPath: directoryPath,
+      barrelFileName: barrelFileName,
+    );
+  } else {
+    final directoryPath = args[0];
+    final className = args.length >= 2 ? args[1] : 'AppAssets';
+
+    await generateAssets(
+      directoryPath: directoryPath,
+      className: className,
+    );
+  }
 }

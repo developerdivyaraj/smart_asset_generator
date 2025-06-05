@@ -12,7 +12,8 @@ Future<void> generateAssets({
   }
 
   final buffer = StringBuffer();
-  buffer.writeln('/// Auto-generated. Do not modify by hand.\nclass $className {\n  $className._();\n');
+  buffer.writeln('/// Auto-generated. Do not modify by hand.');
+  buffer.writeln('class $className {\n  $className._();\n');
 
   final files = assetDir
       .listSync(recursive: true)
@@ -21,7 +22,7 @@ Future<void> generateAssets({
       .toList();
 
   for (var file in files) {
-    final relativePath = file.path.replaceAll('\\', '/');
+    final relativePath = file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
     final fileName = relativePath.split('/').last;
     final varName = _toCamelCase(fileName.replaceAll(RegExp(r'\.\w+$'), ''));
 
@@ -30,14 +31,61 @@ Future<void> generateAssets({
 
   buffer.writeln('}');
 
-  final outputFile = File('lib/generated/$className.dart');
+  final fileName = '${className.toSnakeCase()}.dart';
+  final outputFile = File('lib/generated/$fileName');
   await outputFile.create(recursive: true);
   await outputFile.writeAsString(buffer.toString());
 
-  print('✅ $className.dart generated with ${files.length} assets.');
+  print('✅ lib/generated/$fileName generated with ${files.length} assets.');
+}
+
+Future<void> generateBarrelFile({
+  required String directoryPath,
+  String barrelFileName = 'index',
+}) async {
+  final dir = Directory(directoryPath);
+
+  if (!dir.existsSync()) {
+    print('❌ Directory does not exist: $directoryPath');
+    return;
+  }
+
+  final dartFiles = dir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) =>
+  f.path.endsWith('.dart') &&
+      !f.path.endsWith('${barrelFileName.toSnakeCase()}.dart'))
+      .toList();
+
+  dartFiles.sort((a, b) => a.path.compareTo(b.path));
+
+  final buffer = StringBuffer();
+
+  for (var file in dartFiles) {
+    final relativePath = file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    buffer.writeln("export '$relativePath';");
+  }
+
+  final fileName = '${barrelFileName.toSnakeCase()}.dart';
+  final barrelFile = File('$directoryPath/$fileName');
+  await barrelFile.writeAsString(buffer.toString());
+
+  print('📦 $directoryPath/$fileName generated with ${dartFiles.length} exports.');
 }
 
 String _toCamelCase(String input) {
-  final parts = input.split('_');
-  return parts.first + parts.skip(1).map((w) => w[0].toUpperCase() + w.substring(1)).join();
+  final sanitized = input.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+  final parts = sanitized.split('_');
+  return parts.first.toLowerCase() +
+      parts.skip(1).map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1)).join();
+}
+
+extension SnakeCaseExtension on String {
+  String toSnakeCase() {
+    return replaceAllMapped(
+      RegExp(r'(?<=[a-z])[A-Z]'),
+          (match) => '_${match.group(0)!.toLowerCase()}',
+    ).toLowerCase();
+  }
 }

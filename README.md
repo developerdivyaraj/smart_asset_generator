@@ -1,17 +1,27 @@
-# 🛠️ Smart Asset Generator
+# 🛠️ Asset Generator
 
-A simple and flexible Dart/Flutter CLI tool to auto-generate asset reference classes like `AppImages`, `AppLottie`, or `AppLocales` from your project directories — no more hardcoding asset paths or boilerplate maintenance!
+A simple and flexible Dart/Flutter CLI tool to auto-generate asset reference classes and barrel files — making asset management and file exports clean, consistent, and error-free.
 
 ---
 
 ## ✨ Features
 
-✅ **Automatically scans asset folders** and generates a Dart class with constant paths  
-✅ **Supports nested directories** and multiple asset types (`.svg`, `.png`, `.json`, etc.)  
-✅ **CamelCase variable naming**: `assets/images/ic_home.svg` → `icHome`  
-✅ **Works with Flutter and pure Dart projects**  
-✅ **Fully customizable class name**  
-✅ **Ready to use from CLI** or programmatically
+✅ Automatically scans asset folders and generates Dart class with constant paths  
+✅ Supports nested folders and various file types (`.png`, `.svg`, `.json`, etc.)  
+✅ Converts file names to `camelCase` constants for easy reference  
+✅ Works in Flutter and pure Dart projects  
+✅ Fully customizable class name and output structure  
+✅ Also supports **barrel file generation**: auto-exports multiple Dart files from any directory  
+✅ CLI-ready, no runtime dependency
+
+---
+
+## 📦 Use Cases
+
+- Generate an `AppImages` class to avoid hardcoding asset paths
+- Organize all custom widgets via a single `widget_exports.dart` barrel file
+- Reduce boilerplate and avoid human error in large projects
+- Keep imports clean and scalable in modular architecture
 
 ---
 
@@ -19,56 +29,54 @@ A simple and flexible Dart/Flutter CLI tool to auto-generate asset reference cla
 
 ### 🔧 Installation
 
-Add this package to your `dev_dependencies`:
+In your Flutter/Dart project’s `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  smart_asset_generator: ^0.0.6
+  asset_generator:
+    path: ../asset_generator  # or replace with Git/hosted version
 ```
 
-Or use the path version locally during development:
+Then run:
 
-```yaml
-dev_dependencies:
-  smart_asset_generator:
-    path: ../smart_asset_generator
+```bash
+flutter pub get
 ```
-
-Run `pub get` or `flutter pub get`.
 
 ---
 
-### 🏃‍♂️ Usage
+## 🏃‍♂️ CLI Usage
 
-#### 📦 From CLI
-
-Run the generator with:
+### 🖼️ Generate Asset Reference Class
 
 ```bash
-dart run smart_asset_generator <asset_path> [class_name]
+dart run asset_generator <asset_path> [class_name]
 ```
 
-**Parameters:**
-- `asset_path` → **Required.** Path to your asset directory (e.g. `assets/images`)
-- `class_name` → **Optional.** Name of the generated Dart class (default: `AppAssets`)
+| Argument      | Required | Description                                   |
+|---------------|----------|-----------------------------------------------|
+| `asset_path`  | ✅       | Path to your assets folder (e.g. `assets/icons`) |
+| `class_name`  | ❌       | Class name to generate (default: `AppAssets`)   |
 
-#### 💡 Example
+#### ✅ Example
 
 ```bash
-dart run smart_asset_generator assets/images AppImages
+dart run asset_generator assets/images AppImages
 ```
 
-**Generates a Dart file like:**
+**Generates:**
 
 ```dart
+// lib/generated/app_images.dart
 class AppImages {
   AppImages._();
-  static const String icGoogle = 'assets/images/ic_google.png';
-  static const String icArrowRight = 'assets/images/ic_arrow_right.svg';
+
+  static const String icGoogle = 'ic_google.png';
+  static const String icArrowRight = 'ic_arrow_right.svg';
 }
 ```
 
-**You can now use it like:**
+Use it like:
 
 ```dart
 Image.asset(AppImages.icGoogle);
@@ -76,34 +84,60 @@ Image.asset(AppImages.icGoogle);
 
 ---
 
-## 🛠 Output Location
+### 📦 Generate Barrel File
 
-The generated file will be created in your project at:
-
-```
-lib/generated/AppImages.dart
+```bash
+dart run asset_generator barrel <directory> [output_file_name]
 ```
 
-**Make sure `lib/generated/` is included in your `pubspec.yaml`:**
+| Argument          | Required | Description                                         |
+|-------------------|----------|-----------------------------------------------------|
+| `directory`       | ✅       | Directory containing Dart files to export          |
+| `output_file_name`| ❌       | Output file name (default: `imports.dart`)           |
 
-```yaml
-flutter:
-  assets:
-    - assets/images/
+#### ✅ Example
+```bash
+dart run asset_generator barrel lib
 ```
+
+```bash
+dart run asset_generator barrel lib/widgets widget_exports
+```
+
+**Generates:**
+
+```dart
+// lib/widgets/widget_exports.dart
+export 'button/custom_button.dart';
+export 'form/input_field.dart';
+export 'layout/grid_view.dart';
+```
+
+This allows clean imports in your app:
+
+```dart
+import 'package:your_app/widgets/widget_exports.dart';
+```
+
+---
+
+## 📂 Output Paths
+
+| Command                      | Output Location                         |
+|------------------------------|------------------------------------------|
+| Asset class                  | `lib/generated/{class_name}.dart`        |
+| Barrel file                  | `{directory}/{output_file_name}.dart`    |
 
 ---
 
 ## 📄 License
 
-**MIT License**
-
-Copyright © 2025 Divyarajsinh Jadeja
+**MIT License**  
+© 2025 [Divyarajsinh Jadeja](https://github.com/DivyarajsinhJadeja)
 
 ---
 
-## ❤️ Contributions Welcome
+## 🙌 Contributions
 
-If you find a bug or want to add a feature, feel free to open an issue or PR.
-
-**Star ⭐ the repo if you find it helpful!**
+PRs and issues are welcome!  
+If you find this tool helpful, consider giving it a ⭐️ on GitHub.
