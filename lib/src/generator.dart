@@ -1,42 +1,7 @@
 import 'dart:io';
 
-Future<void> main(List<String> args) async {
-  if (args.isEmpty) {
-    print('❌ Missing command.\nAvailable:\n'
-        '  asset <path> [ClassName]\n'
-        '  barrel <directory> [FileName]\n'
-        '  module name=... location=... [export=...]');
-    return;
-  }
-
-  final command = args.first;
-  final rest = args.sublist(1);
-
-  if (command == 'asset') {
-    final path = rest.isNotEmpty ? rest[0] : null;
-    final className = rest.length > 1 ? rest[1] : 'AppAssets';
-    if (path == null) {
-      print('❌ Usage: asset <path> [ClassName]');
-      return;
-    }
-    await generateAssets(directoryPath: path, className: className);
-  } else if (command == 'barrel') {
-    final path = rest.isNotEmpty ? rest[0] : null;
-    final fileName = rest.length > 1 ? rest[1] : 'exports';
-    if (path == null) {
-      print('❌ Usage: barrel <directory> [FileName]');
-      return;
-    }
-    await generateBarrelFile(directoryPath: path, barrelFileName: fileName);
-  } else if (command == 'module') {
-    await generateModuleFromArgs(rest);
-  } else {
-    print('❌ Unknown command: $command');
-  }
-}
 
 /// ---------- ASSET GENERATOR ----------
-
 Future<void> generateAssets({
   required String directoryPath,
   String className = 'AppAssets',
@@ -76,7 +41,6 @@ Future<void> generateAssets({
 }
 
 /// ---------- BARREL GENERATOR ----------
-
 Future<void> generateBarrelFile({
   required String directoryPath,
   String barrelFileName = 'exports',
@@ -112,7 +76,6 @@ Future<void> generateBarrelFile({
 }
 
 /// ---------- MODULE GENERATOR ----------
-
 Future<void> generateModuleFromArgs(List<String> args) async {
   final argsMap = {
     for (var e in args)
@@ -125,7 +88,7 @@ Future<void> generateModuleFromArgs(List<String> args) async {
 
   if (name == null || location == null) {
     print('❌ Missing required arguments.\nUsage:\n'
-        'dart run asset_generator module name=home location=lib/modules [export=lib/modules/exports.dart]');
+        'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]');
     return;
   }
 
@@ -153,21 +116,21 @@ Future<void> generateModule({
   final snake = name.toSnakeCase();
   final pascal = name.toPascalCase();
 
-  final bindingPath = '$name/bindings/${snake}_binding.dart';
-  final controllerPath = '$name/controller/${snake}_controller.dart';
-  final viewPath = '$name/view/${snake}_page.dart';
+  final bindingPath = 'lib/$location/$name/bindings/${snake}_binding.dart';
+  final controllerPath = 'lib/$location/$name/controller/${snake}_controller.dart';
+  final viewPath = 'lib/$location/$name/view/${snake}_page.dart';
 
-  await File('${bindingDir.path}/${snake}_binding.dart')
-      .writeAsString(_bindingTemplate(pascal));
-  await File('${controllerDir.path}/${snake}_controller.dart')
-      .writeAsString(_controllerTemplate(pascal));
-  await File('${viewDir.path}/${snake}_page.dart')
-      .writeAsString(_pageTemplate(pascal));
+  await File(bindingPath).writeAsString(_bindingTemplate(pascal));
+  await File(controllerPath).writeAsString(_controllerTemplate(pascal));
+  await File(viewPath).writeAsString(_pageTemplate(pascal));
+
+  final project = getProjectName();
+  String stripLib(String path) => path.startsWith('lib/') ? path.substring(4) : path;
 
   final exportLines = [
-    "export '$bindingPath';",
-    "export '$controllerPath';",
-    "export '$viewPath';",
+    "export 'package:$project/${stripLib(bindingPath)}';",
+    "export 'package:$project/${stripLib(controllerPath)}';",
+    "export 'package:$project/${stripLib(viewPath)}';",
   ];
 
   final exportFile = File(exportFilePath);
@@ -188,8 +151,7 @@ Future<void> generateModule({
   print('📦 Exports added to $exportFilePath');
 }
 
-/// ---------- TEMPLATE HELPERS (Auto-import) ----------
-
+/// ---------- HELPERS ----------
 String getProjectName() {
   final pubspec = File('pubspec.yaml');
   if (!pubspec.existsSync()) return 'your_project';
@@ -251,7 +213,6 @@ class ${name}Page extends GetView<${name}Controller> {
 }
 
 /// ---------- CASE CONVERSIONS ----------
-
 String _toCamelCase(String input) {
   final sanitized = input.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   final parts = sanitized.split('_');
