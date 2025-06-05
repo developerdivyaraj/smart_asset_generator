@@ -1,4 +1,4 @@
-import 'package:smart_asset_generator/asset_generator.dart';
+import 'package:smart_asset_generator/smart_asset_generator.dart';
 
 void main(List<String> args) {
   if (args.isEmpty) {
