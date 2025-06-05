@@ -1,4 +1,4 @@
-# 🛠️ Asset Generator
+# 🛠️ Smart Asset Generator
 
 A simple and flexible Dart/Flutter CLI tool to auto-generate asset reference classes like `AppImages`, `AppLottie`, or `AppLocales` from your project directories — no more hardcoding asset paths or boilerplate maintenance!
 
@@ -23,15 +23,15 @@ Add this package to your `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  asset_generator: ^1.0.0
+  smart_asset_generator: ^0.0.6
 ```
 
 Or use the path version locally during development:
 
 ```yaml
 dev_dependencies:
-  asset_generator:
-    path: ../asset_generator
+  smart_asset_generator:
+    path: ../smart_asset_generator
 ```
 
 Run `pub get` or `flutter pub get`.
@@ -45,7 +45,7 @@ Run `pub get` or `flutter pub get`.
 Run the generator with:
 
 ```bash
-dart run asset_generator <asset_path> [class_name]
+dart run smart_asset_generator <asset_path> [class_name]
 ```
 
 **Parameters:**
@@ -55,7 +55,7 @@ dart run asset_generator <asset_path> [class_name]
 #### 💡 Example
 
 ```bash
-dart run asset_generator assets/images AppImages
+dart run smart_asset_generator assets/images AppImages
 ```
 
 **Generates a Dart file like:**
