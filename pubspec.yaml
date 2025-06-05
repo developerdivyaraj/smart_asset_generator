@@ -1,7 +1,8 @@
 name: asset_generator
 description: "A new Flutter project."
 version: 0.0.1
-homepage:
+homepage: https://github.com/developerdivyaraj/asset_generator
+repository: https://github.com/developerdivyaraj/asset_generator
 
 environment:
   sdk: ^3.7.2
@@ -53,4 +54,5 @@ flutter:
   # For details regarding fonts in packages, see
   # https://flutter.dev/to/font-from-package
 executables:
-  asset_generator: bin/asset_generator.dart
+  asset_generator: asset_generator
+
