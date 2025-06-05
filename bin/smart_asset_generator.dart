@@ -12,7 +12,28 @@ Future<void> main(List<String> args) async {
   final command = args.first;
   final rest = args.sublist(1);
 
-  if (command == 'asset') {
+  if (command == 'clone') {
+    final argsMap = {
+      for (var e in args.skip(1))
+        if (e.contains('=')) e.split('=').first: e.split('=').last
+    };
+
+    final newName = argsMap['name'];
+    final androidPackage = argsMap['android'];
+    final iosPackage = argsMap['ios'];
+
+    if (newName == null || androidPackage == null || iosPackage == null) {
+      print('❌ Usage: dart run smart_asset_generator clone name=my_app android=com.example.myapp ios=com.example.myapp');
+      return;
+    }
+
+    await cloneProject(
+      newProjectName: newName,
+      androidPackage: androidPackage,
+      iosPackage: iosPackage,
+    );
+  }
+  else if (command == 'asset') {
     final directoryPath = rest.isNotEmpty ? rest[0] : null;
     final className = rest.length >= 2 ? rest[1] : 'AppAssets';
 
