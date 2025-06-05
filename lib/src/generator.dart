@@ -116,9 +116,9 @@ Future<void> generateModule({
   final snake = name.toSnakeCase();
   final pascal = name.toPascalCase();
 
-  final bindingPath = 'lib/$location/$name/bindings/${snake}_binding.dart';
-  final controllerPath = 'lib/$location/$name/controller/${snake}_controller.dart';
-  final viewPath = 'lib/$location/$name/view/${snake}_page.dart';
+  final bindingPath = '$location/$name/bindings/${snake}_binding.dart';
+  final controllerPath = '$location/$name/controller/${snake}_controller.dart';
+  final viewPath = '$location/$name/view/${snake}_page.dart';
 
   await File(bindingPath).writeAsString(_bindingTemplate(pascal));
   await File(controllerPath).writeAsString(_controllerTemplate(pascal));
