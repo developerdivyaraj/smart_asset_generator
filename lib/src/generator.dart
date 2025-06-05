@@ -302,7 +302,7 @@ import 'package:$project/exports.dart';
 class ${name}Controller extends GetxController {
   @override
   void onInit() {
-    printWrapped("$name Controller initialized");
+    print("$name Controller initialized");
     super.onInit();
   }
 }
