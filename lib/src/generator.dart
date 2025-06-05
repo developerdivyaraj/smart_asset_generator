@@ -120,6 +120,22 @@ Future<void> generateModule({
   final controllerPath = '$location/$name/controller/${snake}_controller.dart';
   final viewPath = '$location/$name/view/${snake}_page.dart';
 
+  // Confirm overwrite if any file exists
+  final existingFiles = [
+    File(bindingPath),
+    File(controllerPath),
+    File(viewPath),
+  ].where((f) => f.existsSync()).toList();
+
+  if (existingFiles.isNotEmpty) {
+    stdout.write('⚠️ One or more files already exist. Overwrite? (y/n): ');
+    final response = stdin.readLineSync();
+    if (response?.toLowerCase() != 'y') {
+      print('❌ Aborted module generation.');
+      return;
+    }
+  }
+
   await File(bindingPath).writeAsString(_bindingTemplate(pascal));
   await File(controllerPath).writeAsString(_controllerTemplate(pascal));
   await File(viewPath).writeAsString(_pageTemplate(pascal));
@@ -150,6 +166,7 @@ Future<void> generateModule({
   print('✅ Module "$name" created at $location/$name');
   print('📦 Exports added to $exportFilePath');
 }
+
 
 /// ---------- HELPERS ----------
 String getProjectName() {
