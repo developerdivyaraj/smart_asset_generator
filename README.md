@@ -29,19 +29,22 @@ A simple and flexible Dart/Flutter CLI tool to auto-generate asset reference cla
 
 ### 🔧 Installation
 
-In your Flutter/Dart project’s `pubspec.yaml`:
+Add this package to your `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  asset_generator:
-    path: ../asset_generator  # or replace with Git/hosted version
+  smart_asset_generator: ^0.0.6
 ```
 
-Then run:
+Or use the path version locally during development:
 
-```bash
-flutter pub get
+```yaml
+dev_dependencies:
+  smart_asset_generator:
+    path: ../smart_asset_generator
 ```
+
+Run `pub get` or `flutter pub get`.
 
 ---
 
@@ -50,7 +53,7 @@ flutter pub get
 ### 🖼️ Generate Asset Reference Class
 
 ```bash
-dart run asset_generator <asset_path> [class_name]
+dart run smart_asset_generator <asset_path> [class_name]
 ```
 
 | Argument      | Required | Description                                   |
@@ -61,7 +64,7 @@ dart run asset_generator <asset_path> [class_name]
 #### ✅ Example
 
 ```bash
-dart run asset_generator assets/images AppImages
+dart run smart_asset_generator assets/images AppImages
 ```
 
 **Generates:**
@@ -97,11 +100,11 @@ dart run asset_generator barrel <directory> [output_file_name]
 
 #### ✅ Example
 ```bash
-dart run asset_generator barrel lib
+dart run smart_asset_generator barrel lib
 ```
 
 ```bash
-dart run asset_generator barrel lib/widgets widget_exports
+dart run smart_asset_generator barrel lib/widgets widget_exports
 ```
 
 **Generates:**
