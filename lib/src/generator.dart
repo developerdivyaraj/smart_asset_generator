@@ -168,15 +168,27 @@ Future<void> generateModule({
 }
 
 /// ---------- CLONE GENERATOR ----------
-
 Future<void> cloneProject({
   required String newProjectName,
   required String androidPackage,
   required String iosPackage,
+  String? path,
 }) async {
   final currentDir = Directory.current;
   final oldProjectName = getProjectName();
-  final newDir = Directory('${currentDir.parent.path}/$newProjectName');
+  final baseDir = path != null ? Directory(path) : currentDir.parent;
+
+  // ✅ Validate custom path
+  if (!await baseDir.exists()) {
+    print('❌ Provided path does not exist: ${baseDir.path}');
+    return;
+  }
+  if (!baseDir.statSync().type.toString().contains('directory')) {
+    print('❌ Provided path is not a directory: ${baseDir.path}');
+    return;
+  }
+
+  final newDir = Directory('${baseDir.path}/$newProjectName');
 
   if (await newDir.exists()) {
     print('❌ Directory already exists: ${newDir.path}');
@@ -205,7 +217,7 @@ Future<void> cloneProject({
       !f.path.contains('/.git/') &&
       !f.path.contains('/build/'));
 
-  // 4b. Rename and update android/{oldProjectName}_android.iml
+  // 4. Rename and update android/{oldProjectName}_android.iml
   final androidIml = File('${newDir.path}/android/${oldProjectName}_android.iml');
   final newAndroidIml = File('${newDir.path}/android/${newProjectName}_android.iml');
 
@@ -227,7 +239,7 @@ Future<void> cloneProject({
     } catch (_) {}
   }
 
-  // 4. Rename and update .iml file
+  // 5. Rename and update .iml file
   final oldIml = File('${newDir.path}/$oldProjectName.iml');
   final newIml = File('${newDir.path}/$newProjectName.iml');
   if (await oldIml.exists()) {
@@ -237,7 +249,7 @@ Future<void> cloneProject({
     await oldIml.delete();
   }
 
-  // 5. Update Android package name
+  // 6. Update Android package name
   final androidManifest = File('${newDir.path}/android/app/src/main/AndroidManifest.xml');
   final buildGradle = File('${newDir.path}/android/app/build.gradle');
   for (final file in [androidManifest, buildGradle]) {
@@ -249,7 +261,7 @@ Future<void> cloneProject({
     }
   }
 
-  // 6. Update iOS bundle identifier
+  // 7. Update iOS bundle identifier
   final iosPlist = File('${newDir.path}/ios/Runner/Info.plist');
   if (await iosPlist.exists()) {
     var content = await iosPlist.readAsString();
@@ -260,11 +272,12 @@ Future<void> cloneProject({
     await iosPlist.writeAsString(content);
   }
 
-  // 7. Done
+  // ✅ Done
   print('✅ Project cloned to ${newDir.path}');
   print('📦 Android package: $androidPackage');
   print('📦 iOS bundle ID: $iosPackage');
 }
+
 
 
 /// ---------- HELPERS ----------

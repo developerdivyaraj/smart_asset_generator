@@ -21,6 +21,7 @@ Future<void> main(List<String> args) async {
     final newName = argsMap['name'];
     final androidPackage = argsMap['android'];
     final iosPackage = argsMap['ios'];
+    final path = argsMap['path'];
 
     if (newName == null || androidPackage == null || iosPackage == null) {
       print('❌ Usage: dart run smart_asset_generator clone name=my_app android=com.example.myapp ios=com.example.myapp');
@@ -31,6 +32,7 @@ Future<void> main(List<String> args) async {
       newProjectName: newName,
       androidPackage: androidPackage,
       iosPackage: iosPackage,
+      path:path
     );
   }
   else if (command == 'asset') {
