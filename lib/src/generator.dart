@@ -154,9 +154,10 @@ Future<void> generateModule({
   final current = exists ? await exportFile.readAsString() : '';
 
   final buffer = StringBuffer(current.trim());
+  buffer.writeln("\n");
   for (final line in exportLines) {
     if (!current.contains(line)) {
-      buffer.writeln('\n$line');
+      buffer.writeln(line);
     }
   }
 
