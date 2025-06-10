@@ -32,7 +32,7 @@ Future<void> generateAssets({
 
   buffer.writeln('}');
 
-  final fileName = '${className.toSnakeCase()}.dart';
+  final fileName = '${className.toSnakeCase()}.g.dart';
   final outputFile = File('lib/generated/$fileName');
   await outputFile.create(recursive: true);
   await outputFile.writeAsString(buffer.toString());
@@ -154,9 +154,10 @@ Future<void> generateModule({
   final current = exists ? await exportFile.readAsString() : '';
 
   final buffer = StringBuffer(current.trim());
+  buffer.writeln("\n");
   for (final line in exportLines) {
     if (!current.contains(line)) {
-      buffer.writeln('\n$line');
+      buffer.writeln(line);
     }
   }
 
