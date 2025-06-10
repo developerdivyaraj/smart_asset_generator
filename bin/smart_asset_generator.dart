@@ -36,20 +36,16 @@ Future<void> main(List<String> args) async {
     );
   }
   else if (command == 'asset') {
-    final directoryPath = rest.isNotEmpty ? rest[0] : null;
-    final className = rest.length >= 2 ? rest[1] : 'AppAssets';
-
-    if (directoryPath == null) {
-      print('❌ Usage: dart run smart_asset_generator asset <directory> [ClassName]');
-      return;
-    }
+    final directoryPath = rest.isNotEmpty ? rest[0] : 'assets';
+    final className = rest.length >= 2 ? rest[1] : 'Assets';
 
     await generateAssets(
       directoryPath: directoryPath,
       className: className,
     );
-  } else if (command == 'barrel') {
-    final directoryPath = rest.isNotEmpty ? rest[0] : null;
+  }
+  else if (command == 'barrel') {
+    final directoryPath = rest.isNotEmpty ? rest[0] : 'lib';
     final barrelFileName = rest.length >= 2 ? rest[1] : 'exports';
 
     if (directoryPath == null) {

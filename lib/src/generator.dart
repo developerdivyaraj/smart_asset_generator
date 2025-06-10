@@ -32,7 +32,7 @@ Future<void> generateAssets({
 
   buffer.writeln('}');
 
-  final fileName = '${className.toSnakeCase()}.dart';
+  final fileName = '${className.toSnakeCase()}.g.dart';
   final outputFile = File('lib/generated/$fileName');
   await outputFile.create(recursive: true);
   await outputFile.writeAsString(buffer.toString());
