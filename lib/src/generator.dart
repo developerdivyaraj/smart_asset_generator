@@ -45,6 +45,10 @@ Future<void> generateBarrelFile({
   required String directoryPath,
   String barrelFileName = 'exports',
 }) async {
+  final excludedFiles = [
+    'firebase_options_dev.dart',
+    'firebase_options_stg.dart',
+  ];
   final dir = Directory(directoryPath);
   if (!dir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
@@ -54,9 +58,12 @@ Future<void> generateBarrelFile({
   final dartFiles = dir
       .listSync(recursive: true)
       .whereType<File>()
-      .where((f) =>
-  f.path.endsWith('.dart') &&
-      !f.path.endsWith('${barrelFileName.toSnakeCase()}.dart'))
+      .where((f) {
+    final fileName = f.uri.pathSegments.last;
+    return f.path.endsWith('.dart') &&
+        fileName != '${barrelFileName.toSnakeCase()}.dart' &&
+        !excludedFiles.contains(fileName);
+  })
       .toList();
 
   dartFiles.sort((a, b) => a.path.compareTo(b.path));
