@@ -23,8 +23,7 @@ Future<void> generateAssets({
       .toList();
 
   for (var file in files) {
-    final relativePath =
-    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath = file.path.replaceAll('\\', '/');
     final fileName = relativePath.split('/').last;
     final varName = _toCamelCase(fileName.replaceAll(RegExp(r'\.\w+$'), ''));
     buffer.writeln("  static const String $varName = '$relativePath';");
