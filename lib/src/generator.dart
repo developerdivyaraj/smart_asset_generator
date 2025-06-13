@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 
@@ -168,7 +170,7 @@ Future<void> generateModule({
   }
 
   await exportFile.create(recursive: true);
-  await exportFile.writeAsString(buffer.toString().trim() + '\n');
+  await exportFile.writeAsString('${buffer.toString().trim()}\n');
 
   print('✅ Module "$name" created at $location/$name');
   print('📦 Exports added to $exportFilePath');

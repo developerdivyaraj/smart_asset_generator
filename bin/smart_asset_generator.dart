@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:smart_asset_generator/smart_asset_generator.dart';
 
 Future<void> main(List<String> args) async {
@@ -47,11 +49,6 @@ Future<void> main(List<String> args) async {
   else if (command == 'barrel') {
     final directoryPath = rest.isNotEmpty ? rest[0] : 'lib';
     final barrelFileName = rest.length >= 2 ? rest[1] : 'exports';
-
-    if (directoryPath == null) {
-      print('❌ Usage: dart run smart_asset_generator barrel <directory> [BarrelFileName]');
-      return;
-    }
 
     await generateBarrelFile(
       directoryPath: directoryPath,
