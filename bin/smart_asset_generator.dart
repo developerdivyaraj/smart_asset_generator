@@ -17,7 +17,7 @@ Future<void> main(List<String> args) async {
   if (command == 'clone') {
     final argsMap = {
       for (var e in args.skip(1))
-        if (e.contains('=')) e.split('=').first: e.split('=').last
+        if (e.contains('=')) e.split('=').first: e.split('=').last,
     };
 
     final newName = argsMap['name'];
@@ -30,32 +30,34 @@ Future<void> main(List<String> args) async {
       return;
     }
 
-    await cloneProject(
-      newProjectName: newName,
-      androidPackage: androidPackage,
-      iosPackage: iosPackage,
-      path:path
-    );
-  }
-  else if (command == 'asset') {
+    await cloneProject(newProjectName: newName, androidPackage: androidPackage, iosPackage: iosPackage, path: path);
+  } else if (command == 'asset') {
     final directoryPath = rest.isNotEmpty ? rest[0] : 'assets';
     final className = rest.length >= 2 ? rest[1] : 'Assets';
 
-    await generateAssets(
-      directoryPath: directoryPath,
-      className: className,
-    );
-  }
-  else if (command == 'barrel') {
+    await generateAssets(directoryPath: directoryPath, className: className);
+  } else if (command == 'barrel') {
     final directoryPath = rest.isNotEmpty ? rest[0] : 'lib';
     final barrelFileName = rest.length >= 2 ? rest[1] : 'exports';
 
-    await generateBarrelFile(
-      directoryPath: directoryPath,
-      barrelFileName: barrelFileName,
-    );
+    await generateBarrelFile(directoryPath: directoryPath, barrelFileName: barrelFileName);
   } else if (command == 'module') {
     await generateModuleFromArgs(rest);
+  } else if (command == 'notification') {
+    final argsMap = {
+      for (var e in rest)
+        if (e.contains('=')) e.split('=').first: e.split('=').last,
+    };
+
+    final outputPath = argsMap['path'];
+    final exportPath = argsMap['export'];
+
+    if (outputPath == null) {
+      print('❌ Usage: dart run smart_asset_generator notification path=lib/services/notification_handler.dart [export=lib/exports.dart]');
+      return;
+    }
+
+    await generateNotificationHandler(outputPath: outputPath, exportFilePath: exportPath);
   } else {
     print('❌ Unknown command: $command');
   }

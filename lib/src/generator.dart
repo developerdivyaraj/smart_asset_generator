@@ -2,12 +2,8 @@
 
 import 'dart:io';
 
-
 /// ---------- ASSET GENERATOR ----------
-Future<void> generateAssets({
-  required String directoryPath,
-  String className = 'AppAssets',
-}) async {
+Future<void> generateAssets({required String directoryPath, String className = 'AppAssets'}) async {
   final assetDir = Directory(directoryPath);
   if (!assetDir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
@@ -18,11 +14,7 @@ Future<void> generateAssets({
   buffer.writeln('/// Auto-generated. Do not modify by hand.');
   buffer.writeln('class $className {\n  $className._();\n');
 
-  final files = assetDir
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => !f.path.endsWith('.DS_Store'))
-      .toList();
+  final files = assetDir.listSync(recursive: true).whereType<File>().where((f) => !f.path.endsWith('.DS_Store')).toList();
 
   for (var file in files) {
     final relativePath = file.path.replaceAll('\\', '/');
@@ -42,37 +34,25 @@ Future<void> generateAssets({
 }
 
 /// ---------- BARREL GENERATOR ----------
-Future<void> generateBarrelFile({
-  required String directoryPath,
-  String barrelFileName = 'exports',
-}) async {
-  final excludedFiles = [
-    'firebase_options_dev.dart',
-    'firebase_options_stg.dart',
-  ];
+Future<void> generateBarrelFile({required String directoryPath, String barrelFileName = 'exports'}) async {
+  final excludedFiles = ['firebase_options_dev.dart', 'firebase_options_stg.dart'];
   final dir = Directory(directoryPath);
   if (!dir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
     return;
   }
 
-  final dartFiles = dir
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) {
-    final fileName = f.uri.pathSegments.last;
-    return f.path.endsWith('.dart') &&
-        fileName != '${barrelFileName.toSnakeCase()}.dart' &&
-        !excludedFiles.contains(fileName);
-  })
-      .toList();
+  final dartFiles =
+      dir.listSync(recursive: true).whereType<File>().where((f) {
+        final fileName = f.uri.pathSegments.last;
+        return f.path.endsWith('.dart') && fileName != '${barrelFileName.toSnakeCase()}.dart' && !excludedFiles.contains(fileName);
+      }).toList();
 
   dartFiles.sort((a, b) => a.path.compareTo(b.path));
 
   final buffer = StringBuffer();
   for (var file in dartFiles) {
-    final relativePath =
-    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath = file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
     buffer.writeln("export '$relativePath';");
   }
 
@@ -87,7 +67,7 @@ Future<void> generateBarrelFile({
 Future<void> generateModuleFromArgs(List<String> args) async {
   final argsMap = {
     for (var e in args)
-      if (e.contains('=')) e.split('=').first: e.split('=').last
+      if (e.contains('=')) e.split('=').first: e.split('=').last,
   };
 
   final name = argsMap['name'];
@@ -95,23 +75,34 @@ Future<void> generateModuleFromArgs(List<String> args) async {
   final exportPath = argsMap['export'];
 
   if (name == null || location == null) {
-    print('❌ Missing required arguments.\nUsage:\n'
-        'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]');
+    print(
+      '❌ Missing required arguments.\nUsage:\n'
+      'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]',
+    );
     return;
   }
 
-  await generateModule(
-    name: name,
-    location: location,
-    exportFilePath: exportPath ?? 'lib/exports.dart',
-  );
+  await generateModule(name: name, location: location, exportFilePath: exportPath ?? 'lib/exports.dart');
 }
 
-Future<void> generateModule({
-  required String name,
-  required String location,
-  required String exportFilePath,
-}) async {
+Future<void> handleNotificationHandlerArgs(List<String> args) async {
+  final argsMap = {
+    for (var e in args)
+      if (e.contains('=')) e.split('=').first: e.split('=').last,
+  };
+
+  final path = argsMap['path'];
+  if (path == null) {
+    print(
+      '❌ Missing required argument: path\nUsage:\n  dart run smart_asset_generator notification path=lib/common/notification_handler.dart',
+    );
+    return;
+  }
+
+  await generateNotificationHandler(outputPath: path);
+}
+
+Future<void> generateModule({required String name, required String location, required String exportFilePath}) async {
   final baseDir = Directory('$location/$name');
   final bindingDir = Directory('${baseDir.path}/bindings');
   final controllerDir = Directory('${baseDir.path}/controller');
@@ -129,11 +120,7 @@ Future<void> generateModule({
   final viewPath = '$location/$name/view/${snake}_page.dart';
 
   // Confirm overwrite if any file exists
-  final existingFiles = [
-    File(bindingPath),
-    File(controllerPath),
-    File(viewPath),
-  ].where((f) => f.existsSync()).toList();
+  final existingFiles = [File(bindingPath), File(controllerPath), File(viewPath)].where((f) => f.existsSync()).toList();
 
   if (existingFiles.isNotEmpty) {
     stdout.write('⚠️ One or more files already exist. Overwrite? (y/n): ');
@@ -219,12 +206,14 @@ Future<void> cloneProject({
   final allFiles = newDir
       .listSync(recursive: true)
       .whereType<File>()
-      .where((f) =>
-  !f.path.endsWith('.png') &&
-      !f.path.endsWith('.jpg') &&
-      !f.path.endsWith('.webp') &&
-      !f.path.contains('/.git/') &&
-      !f.path.contains('/build/'));
+      .where(
+        (f) =>
+            !f.path.endsWith('.png') &&
+            !f.path.endsWith('.jpg') &&
+            !f.path.endsWith('.webp') &&
+            !f.path.contains('/.git/') &&
+            !f.path.contains('/build/'),
+      );
 
   // 4. Rename and update android/{oldProjectName}_android.iml
   final androidIml = File('${newDir.path}/android/${oldProjectName}_android.iml');
@@ -276,7 +265,7 @@ Future<void> cloneProject({
     var content = await iosPlist.readAsString();
     content = content.replaceAllMapped(
       RegExp(r'<key>CFBundleIdentifier</key>\s*<string>.*</string>'),
-          (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
+      (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
     );
     await iosPlist.writeAsString(content);
   }
@@ -287,6 +276,159 @@ Future<void> cloneProject({
   print('📦 iOS bundle ID: $iosPackage');
 }
 
+/// ---------- NOTIFICATION HANDLER GENERATOR ----------
+Future<void> generateNotificationHandler({
+  required String outputPath,
+  String? exportFilePath, // optional
+}) async {
+  final file = File(outputPath);
+  final project = getProjectName();
+
+  final content = '''
+import 'package:$project/exports.dart';
+
+/// 📲 Notification Handler
+/// This class handles all notification-related functionality
+class NotificationHandler {
+  static const String _tag = '🔔 NotificationHandler';
+
+  /// Initialize Firebase Cloud Messaging
+  static Future<void> initialize() async {
+    try {
+      // Initialize FCM with a callback for notification taps
+      await FCMInitializer.initialize(
+        onTap: (payload) {
+          print('\$_tag Local Notification tapped with payload: \$payload');
+
+          // Convert string payload to Map if needed
+          final data = {'route': payload};
+          handleNotificationTap(RemoteMessage(data: data));
+        },
+        firebaseOptions: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      final token = await getDeviceToken();
+      print('\$_tag Device token: \$token');
+    } catch (e) {
+      print('\$_tag Error initializing FCM: \$e');
+    }
+  }
+
+  static Future<String?> getDeviceToken() async {
+    try {
+      final token = await FCMInitializer.getDeviceToken();
+      return token;
+    } catch (e) {
+      print('\$_tag Error getting device token: \$e');
+      return null;
+    }
+  }
+
+  static void handleNotificationTap(RemoteMessage message) {
+    final data = message.data;
+    final route = data['route'];
+
+    print('\$_tag Notification tapped: \$data');
+
+    if (route != null) {
+      print('\$_tag Navigating to \$route');
+      _navigateToRoute(route);
+    }
+  }
+
+  static void _navigateToRoute(String route) {
+    try {
+      Get.toNamed(route);
+    } catch (e) {
+      print('\$_tag Error navigating to route \$route: \$e');
+    }
+  }
+
+  static Future<void> handleBackgroundMessage(RemoteMessage message) async {
+    print('\$_tag Background message received: \${message.messageId}');
+  }
+
+  static void handleForegroundMessage(RemoteMessage message) {
+    print('\$_tag Foreground message received: \${message.messageId}');
+    _showLocalNotification(message);
+  }
+
+  static void _showLocalNotification(RemoteMessage message) {
+    print('\$_tag Showing local notification: \${message.notification?.title}');
+  }
+
+  static Future<bool> requestPermissions() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      print('\$_tag Permission granted: \${settings.authorizationStatus}');
+      return settings.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (e) {
+      print('\$_tag Error requesting permissions: \$e');
+      return false;
+    }
+  }
+
+  static Future<void> subscribeToTopic(String topic) async {
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic(topic);
+      print('\$_tag Subscribed to topic: \$topic');
+    } catch (e) {
+      print('\$_tag Error subscribing to topic \$topic: \$e');
+    }
+  }
+
+  static Future<void> unsubscribeFromTopic(String topic) async {
+    try {
+      await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+      print('\$_tag Unsubscribed from topic: \$topic');
+    } catch (e) {
+      print('\$_tag Error unsubscribing from topic \$topic: \$e');
+    }
+  }
+
+  static void setupMessageListeners() {
+    FirebaseMessaging.onMessage.listen(handleForegroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(handleNotificationTap);
+    FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
+  }
+}
+''';
+
+  await file.create(recursive: true);
+  await file.writeAsString(content);
+  print('✅ NotificationHandler file created at: $outputPath');
+
+  // ✅ Auto-add to export file if provided
+  if (exportFilePath != null) {
+    final exportFile = File(exportFilePath);
+    final exists = exportFile.existsSync();
+    final current = exists ? await exportFile.readAsString() : '';
+
+    // Compute relative path (strip "lib/")
+    String relativePath = outputPath.startsWith('lib/') ? outputPath.substring(4) : outputPath;
+    final exportLine = "export 'package:$project/$relativePath';";
+
+    if (!current.contains(exportLine)) {
+      final buffer = StringBuffer(current.trim());
+      buffer.writeln("\n$exportLine");
+      await exportFile.create(recursive: true);
+      await exportFile.writeAsString('${buffer.toString().trim()}\n');
+      print('📦 Export added to $exportFilePath');
+    } else {
+      print('ℹ️ Export already exists in $exportFilePath');
+    }
+  }
+}
 
 
 /// ---------- HELPERS ----------
@@ -354,19 +496,15 @@ class ${name}Page extends GetView<${name}Controller> {
 String _toCamelCase(String input) {
   final sanitized = input.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   final parts = sanitized.split('_');
-  return parts.first.toLowerCase() +
-      parts.skip(1).map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1)).join();
+  return parts.first.toLowerCase() + parts.skip(1).map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1)).join();
 }
 
 extension SnakeCaseExtension on String {
   String toSnakeCase() {
-    return replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'),
-            (match) => '_${match.group(0)!.toLowerCase()}').toLowerCase();
+    return replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'), (match) => '_${match.group(0)!.toLowerCase()}').toLowerCase();
   }
 
   String toPascalCase() {
-    return split('_')
-        .map((s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1) : '')
-        .join();
+    return split('_').map((s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1) : '').join();
   }
 }
