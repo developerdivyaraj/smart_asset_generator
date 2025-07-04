@@ -19,6 +19,6 @@ dev_dependencies:
 
 # Fix the executables section - both should match
 executables:
-  smart_asset_generator: bin/smart_asset_generator.dart
+  smart_asset_generator: smart_asset_generator
 
 flutter:
