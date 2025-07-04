@@ -1,6 +1,6 @@
 name: smart_asset_generator
 description: A Dart package to generate Dart asset references with camelCase naming from your assets folder.
-version: 0.0.10  # Increment version for new publish
+version: 0.0.11  # Increment version for new publish
 homepage: https://github.com/developerdivyaraj/smart_asset_generator
 repository: https://github.com/developerdivyaraj/smart_asset_generator
 
@@ -19,6 +19,6 @@ dev_dependencies:
 
 # Fix the executables section - both should match
 executables:
-  smart_asset_generator: smart_asset_generator
+  smart_asset_generator: bin/smart_asset_generator.dart
 
 flutter:

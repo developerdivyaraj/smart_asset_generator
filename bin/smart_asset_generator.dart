@@ -43,21 +43,6 @@ Future<void> main(List<String> args) async {
     await generateBarrelFile(directoryPath: directoryPath, barrelFileName: barrelFileName);
   } else if (command == 'module') {
     await generateModuleFromArgs(rest);
-  } else if (command == 'notification') {
-    final argsMap = {
-      for (var e in rest)
-        if (e.contains('=')) e.split('=').first: e.split('=').last,
-    };
-
-    final outputPath = argsMap['path'];
-    final exportPath = argsMap['export'];
-
-    if (outputPath == null) {
-      print('❌ Usage: dart run smart_asset_generator notification path=lib/services/notification_handler.dart [export=lib/exports.dart]');
-      return;
-    }
-
-    await generateNotificationHandler(outputPath: outputPath, exportFilePath: exportPath);
   } else {
     print('❌ Unknown command: $command');
   }
