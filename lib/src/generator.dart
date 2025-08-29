@@ -505,7 +505,6 @@ String _buildProjectConfigTemplate() {
       '  - dart run smart_asset_generator apk [release|debug] [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]\n'
       '  - dart run smart_asset_generator ipa [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]'
       '  - dart run smart_asset_generator apps [release|debug] [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]'
-      '  - dart run smart_asset_generator config set loadlyApiKey=<YOUR_API_KEY> [--global]\n'
       '  - dart run smart_asset_generator init\n';
 }
 

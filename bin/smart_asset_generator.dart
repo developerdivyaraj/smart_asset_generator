@@ -2,7 +2,7 @@
 
 import 'package:smart_asset_generator/smart_asset_generator.dart';
 
-enum Command { clone, asset, barrel, module, apk, ipa, apps, config, init }
+enum Command { clone, asset, barrel, module, apk, ipa, apps, init }
 
 Command? parseCommand(String value) {
   switch (value.toLowerCase()) {
@@ -20,8 +20,6 @@ Command? parseCommand(String value) {
       return Command.ipa;
     case 'apps':
       return Command.apps;
-    case 'config':
-      return Command.config;
     case 'init':
       return Command.init;
     default:
@@ -202,28 +200,6 @@ Future<void> main(List<String> args) async {
       if(ipaResult!=null)print('🔗 IPA: https://loadly.io/${ipaResult.shortcutUrl}');
       break;
 
-    case Command.config:
-      if (rest.isEmpty) {
-        print('❌ Missing subcommand. Usage: dart run smart_asset_generator config set loadlyApiKey=YOUR_KEY');
-        return;
-      }
-      final sub = rest.first;
-      final subArgs = rest.sublist(1);
-      if (sub == 'set') {
-        final subMap = {
-          for (var e in subArgs)
-            if (e.contains('=')) e.split('=')[0]: e.split('=')[1]
-        };
-        final key = subMap['loadlyApiKey'] ?? subMap['apiKey'] ?? subMap['_api_key'];
-        if (key == null || key.isEmpty) {
-          print('❌ Missing loadlyApiKey. Usage: dart run smart_asset_generator config set loadlyApiKey=YOUR_KEY');
-          return;
-        }
-        await setLoadlyApiKey(key: key);
-      } else {
-        print('❌ Unknown config subcommand: $sub');
-      }
-      break;
 
     case Command.init:
       final overwrite = rest.any((e) => e == '--overwrite');
