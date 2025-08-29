@@ -313,7 +313,7 @@ Future<void> generateAndUploadApk({
 }
 
 /// ---------- APK GENERATOR & UPLOADER (LOADLY) ----------
-Future<void> generateAndUploadApkToLoadly({
+Future<LoadlyUploadResult?> generateAndUploadApkToLoadly({
   required String apiKey,
   bool isRelease = true,
   int buildInstallType = 1,
@@ -326,7 +326,7 @@ Future<void> generateAndUploadApkToLoadly({
   final buildResult = await Process.run('flutter', ['build', 'apk', '--$buildType']);
   if (buildResult.exitCode != 0) {
     print('❌ APK build failed:\n${buildResult.stderr}');
-    return;
+    return null;
   }
   print('✅ APK built successfully!');
 
@@ -335,7 +335,7 @@ Future<void> generateAndUploadApkToLoadly({
   final apk = File(apkPath);
   if (!apk.existsSync()) {
     print('❌ APK not found at $apkPath.');
-    return;
+    return null;
   }
 
   // Prepare nice filename
@@ -357,7 +357,81 @@ Future<void> generateAndUploadApkToLoadly({
 
   if (uploadResult == null) {
     print('❌ Upload to Loadly failed.');
-    return;
+    return null;
+  }
+
+  print('✅ Uploaded to Loadly!');
+  if (uploadResult.installPageUrl != null) {
+    print('🔗 Install Page: ${uploadResult.installPageUrl}');
+  }
+  if (uploadResult.shortcutUrl != null) {
+    print('🔗 Link: https://loadly.io/${uploadResult.shortcutUrl}');
+  }
+  if (uploadResult.buildKey != null) {
+    print('🔑 Build Key: ${uploadResult.buildKey}');
+  }
+  return uploadResult;
+}
+
+/// ---------- IPA GENERATOR & UPLOADER (LOADLY) ----------
+Future<LoadlyUploadResult?> generateAndUploadIpaToLoadly({
+  required String apiKey,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  if (!Platform.isMacOS) {
+    print('❌ IPA build is only supported on macOS.');
+    return null;
+  }
+
+  print('🚀 Building iOS IPA (release)...');
+
+  final buildResult = await Process.run('flutter', ['build', 'ipa']);
+  if (buildResult.exitCode != 0) {
+    print('❌ IPA build failed:\n${buildResult.stderr}');
+    return null;
+  }
+  print('✅ IPA built successfully!');
+
+  // Locate IPA
+  final ipaDir = Directory('build/ios/ipa');
+  if (!ipaDir.existsSync()) {
+    print('❌ IPA output directory not found at build/ios/ipa');
+    return null;
+  }
+  final ipaFiles = ipaDir
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.toLowerCase().endsWith('.ipa'))
+      .toList();
+  if (ipaFiles.isEmpty) {
+    print('❌ No .ipa found in build/ios/ipa');
+    return null;
+  }
+  ipaFiles.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+  final ipa = ipaFiles.last;
+
+  // Prepare nice filename
+  _Metadata metadata = _getAppMetadata();
+  final timestamp = DateFormat('dd-MM-yyyy').format(DateTime.now());
+  final readableName = '${metadata.name}(v${metadata.version})$timestamp.ipa';
+  final renamedPath = p.join(ipaDir.path, readableName);
+  final renamedIpa = await ipa.copy(renamedPath);
+  print('📂 IPA saved in build folder: ${renamedIpa.path}');
+
+  print('☁️ Uploading to Loadly...');
+  final uploadResult = await uploadToLoadlyWithProgress(
+    renamedIpa,
+    apiKey: apiKey,
+    buildInstallType: buildInstallType,
+    buildPassword: buildPassword,
+    buildUpdateDescription: buildUpdateDescription,
+  );
+
+  if (uploadResult == null) {
+    print('❌ Upload to Loadly failed.');
+    return null;
   }
 
   print('✅ Uploaded to Loadly!');
@@ -370,6 +444,7 @@ Future<void> generateAndUploadApkToLoadly({
   if (uploadResult.buildKey != null) {
     print('🔑 Build Key: ${uploadResult.buildKey}');
   }
+  return uploadResult;
 }
 
 class LoadlyUploadResult {
@@ -582,7 +657,7 @@ String getProjectName() {
 String _bindingTemplate(String name) {
   final project = getProjectName();
   return '''
-import 'package:$project/exports.dart';
+import 'package:$project/$project.dart';
 
 class ${name}Binding extends Bindings {
   @override
@@ -596,7 +671,7 @@ class ${name}Binding extends Bindings {
 String _controllerTemplate(String name) {
   final project = getProjectName();
   return '''
-import 'package:$project/exports.dart';
+import 'package:$project/$project.dart';
 
 class ${name}Controller extends GetxController {
   @override
@@ -611,7 +686,7 @@ class ${name}Controller extends GetxController {
 String _pageTemplate(String name) {
   final project = getProjectName();
   return '''
-import 'package:$project/exports.dart';
+import 'package:$project/$project.dart';
 
 class ${name}Page extends GetView<${name}Controller> {
   const ${name}Page({super.key});

@@ -2,7 +2,7 @@
 
 import 'package:smart_asset_generator/smart_asset_generator.dart';
 
-enum Command { clone, asset, barrel, module, apk, config, init }
+enum Command { clone, asset, barrel, module, apk, ipa, apps, config, init }
 
 Command? parseCommand(String value) {
   switch (value.toLowerCase()) {
@@ -16,6 +16,10 @@ Command? parseCommand(String value) {
       return Command.module;
     case 'apk':
       return Command.apk;
+    case 'ipa':
+      return Command.ipa;
+    case 'apps':
+      return Command.apps;
     case 'config':
       return Command.config;
     case 'init':
@@ -38,6 +42,8 @@ Future<void> main(List<String> args) async {
     print('  dart run smart_asset_generator barrel <directory> [BarrelFileName]');
     print('  dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]');
     print('  dart run smart_asset_generator apk [release|debug] apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Update+notes]');
+    print('  dart run smart_asset_generator ipa apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Update+notes]');
+    print('  dart run smart_asset_generator apps [release|debug] apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Update+notes]');
     print('  dart run smart_asset_generator config set loadlyApiKey=YOUR_KEY');
     print('  dart run smart_asset_generator init');
     return;
@@ -124,6 +130,76 @@ Future<void> main(List<String> args) async {
         buildPassword: buildPassword,
         buildUpdateDescription: desc,
       );
+      break;
+
+    case Command.ipa:
+      // Usage:
+      // dart run smart_asset_generator ipa apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Your+notes]
+      final argsMapIpa = {
+        for (var e in rest)
+          if (e.contains('=')) e.split('=')[0]: e.split('=')[1]
+      };
+      await ensureProjectConfigFile();
+      String? apiKeyIpa = argsMapIpa['apiKey'] ?? argsMapIpa['_api_key'];
+      apiKeyIpa ??= readLoadlyApiKeyFromProjectConfig();
+      if (apiKeyIpa == null || apiKeyIpa.isEmpty) {
+        print('❌ Missing Loadly API key.');
+        print('  Add it to smart_asset_generator.yaml as loadlyApiKey or pass apiKey=YOUR_KEY');
+        return;
+      }
+      final installTypeStrIpa = argsMapIpa['installType'] ?? argsMapIpa['buildInstallType'] ?? '1';
+      final buildInstallTypeIpa = int.tryParse(installTypeStrIpa) ?? 1;
+      final buildPasswordIpa = argsMapIpa['password'] ?? argsMapIpa['buildPassword'];
+      final descIpa = argsMapIpa['desc'] ?? argsMapIpa['buildUpdateDescription'];
+
+      await generateAndUploadIpaToLoadly(
+        apiKey: apiKeyIpa,
+        buildInstallType: buildInstallTypeIpa,
+        buildPassword: buildPasswordIpa,
+        buildUpdateDescription: descIpa,
+      );
+      break;
+
+    case Command.apps:
+      // Usage:
+      // dart run smart_asset_generator apps [release|debug] apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Your+notes]
+      final modeBoth = parseBuildMode(rest);
+      final isReleaseBoth = modeBoth == BuildMode.release;
+      final argsMapBoth = {
+        for (var e in rest)
+          if (e.contains('=')) e.split('=')[0]: e.split('=')[1]
+      };
+      await ensureProjectConfigFile();
+      String? apiKeyBoth = argsMapBoth['apiKey'] ?? argsMapBoth['_api_key'];
+      apiKeyBoth ??= readLoadlyApiKeyFromProjectConfig();
+      if (apiKeyBoth == null || apiKeyBoth.isEmpty) {
+        print('❌ Missing Loadly API key.');
+        print('  Add it to smart_asset_generator.yaml as loadlyApiKey or pass apiKey=YOUR_KEY');
+        return;
+      }
+      final installTypeStrBoth = argsMapBoth['installType'] ?? argsMapBoth['buildInstallType'] ?? '1';
+      final buildInstallTypeBoth = int.tryParse(installTypeStrBoth) ?? 1;
+      final buildPasswordBoth = argsMapBoth['password'] ?? argsMapBoth['buildPassword'];
+      final descBoth = argsMapBoth['desc'] ?? argsMapBoth['buildUpdateDescription'];
+
+      // APK
+      LoadlyUploadResult? apkResult = await generateAndUploadApkToLoadly(
+        apiKey: apiKeyBoth,
+        isRelease: isReleaseBoth,
+        buildInstallType: buildInstallTypeBoth,
+        buildPassword: buildPasswordBoth,
+        buildUpdateDescription: descBoth,
+      );
+      // IPA (macOS only)
+      LoadlyUploadResult? ipaResult = await generateAndUploadIpaToLoadly(
+        apiKey: apiKeyBoth,
+        buildInstallType: buildInstallTypeBoth,
+        buildPassword: buildPasswordBoth,
+        buildUpdateDescription: descBoth,
+      );
+
+      if(apkResult!=null)print('🔗 APK: https://loadly.io/${apkResult.shortcutUrl}');
+      if(ipaResult!=null)print('🔗 IPA: https://loadly.io/${ipaResult.shortcutUrl}');
       break;
 
     case Command.config:
