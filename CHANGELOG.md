@@ -1,4 +1,4 @@
-## 0.0.11
+## 0.0.13
 
 * Added automated APK build and rename process with timestamp and version in filename.
 * Integrated Loadly upload to generate a shareable link after build.
