@@ -380,6 +380,97 @@ class LoadlyUploadResult {
   LoadlyUploadResult({this.buildKey, this.installPageUrl, this.shortcutUrl});
 }
 
+/// ---------- PROJECT CONFIG HELPERS ----------
+Future<void> ensureProjectConfigFile() async {
+  final file = File('smart_asset_generator.yaml');
+  if (!file.existsSync()) {
+    const defaultContent = '# Smart Asset Generator configuration\n'
+        '# Set your Loadly API key here. This is used for apk uploads.\n'
+        'loadlyApiKey: ""\n';
+    await file.writeAsString(defaultContent);
+    print('📝 Created smart_asset_generator.yaml. Please add your Loadly API key.');
+  }
+}
+
+String? readLoadlyApiKeyFromProjectConfig() {
+  final file = File('smart_asset_generator.yaml');
+  if (!file.existsSync()) return null;
+  try {
+    final yamlStr = file.readAsStringSync();
+    final doc = loadYaml(yamlStr);
+    if (doc is YamlMap) {
+      final key = doc['loadlyApiKey']?.toString();
+      if (key != null && key.isNotEmpty) return key;
+    }
+  } catch (_) {}
+  return null;
+}
+
+Future<void> initProjectConfig({bool overwrite = false}) async {
+  final file = File('smart_asset_generator.yaml');
+  if (file.existsSync() && !overwrite) {
+    print('ℹ️ smart_asset_generator.yaml already exists at ${file.path}');
+    return;
+  }
+  await file.writeAsString(_buildProjectConfigTemplate());
+  print('✅ Created smart_asset_generator.yaml with commands and empty Loadly API key.');
+}
+
+String _buildProjectConfigTemplate() {
+  return '# Smart Asset Generator configuration\n'
+      '# Provide your Loadly API key below or use the config command to set it.\n'
+      'loadlyApiKey: ""\n'
+      '\n'
+      '# Helpful commands you can run:\n'
+      'commands:\n'
+      '  - dart run smart_asset_generator asset <asset_path> [class_name]\n'
+      '  - dart run smart_asset_generator barrel <directory_path> [output_file_name]\n'
+      '  - dart run smart_asset_generator module name=<module_name> location=<path> [export=<barrel_file_path>]\n'
+      '  - dart run smart_asset_generator clone name=<new_project_name> android=<android_package> ios=<ios_package> [path=<directory_path>]\n'
+      '  - dart run smart_asset_generator apk [release|debug] [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]\n'
+      '  - dart run smart_asset_generator config set loadlyApiKey=<YOUR_API_KEY> [--global]\n'
+      '  - dart run smart_asset_generator init\n';
+}
+
+Future<void> setLoadlyApiKey({
+  required String key,
+}) async {
+  final file = File('smart_asset_generator.yaml');
+  if (!file.existsSync()) {
+    const header = '# Smart Asset Generator configuration\n'
+        '# Set your Loadly API key here. This is used for apk uploads.\n';
+    await file.writeAsString('${header}loadlyApiKey: "$key"\n');
+  } else {
+    await _upsertYamlKey(file, 'loadlyApiKey', key);
+  }
+  print('✅ Saved Loadly API key to ${file.path}');
+}
+
+Future<void> _upsertYamlKey(File file, String yamlKey, String value) async {
+  final exists = file.existsSync();
+  String content = exists ? await file.readAsString() : '';
+  if (content.trim().isEmpty) {
+    await file.writeAsString('$yamlKey: "$value"\n');
+    return;
+  }
+  final lines = content.split('\n');
+  bool updated = false;
+  final newLines = <String>[];
+  for (final line in lines) {
+    final trimmed = line.trimLeft();
+    if (trimmed.startsWith('$yamlKey:')) {
+      final indentLength = line.length - trimmed.length;
+      final indent = indentLength > 0 ? line.substring(0, indentLength) : '';
+      newLines.add('$indent$yamlKey: "$value"');
+      updated = true;
+    } else {
+      newLines.add(line);
+    }
+  }
+  if (!updated) newLines.add('$yamlKey: "$value"');
+  await file.writeAsString(newLines.join('\n'));
+}
+
 Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
   File file, {
   required String apiKey,
