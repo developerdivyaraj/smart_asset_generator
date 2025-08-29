@@ -1,31 +1,35 @@
 
 # 🛠️ Smart Asset Generator
 
-A powerful and flexible Dart/Flutter CLI tool to **auto-generate asset reference classes**, **barrel files**, and even **GetX module scaffolding** — making asset management and project structure consistent, clean, and fast.
+
+
+A powerful and flexible Dart/Flutter CLI tool to **auto-generate asset reference classes**, **barrel files**, and **GetX module scaffolding** — making asset management and project structure consistent, clean, and fast.
+
 
 ---
 
 ## ✨ Features
 
-✅ Automatically scans folders and generates asset reference classes (`AppImages`, etc.)  
-✅ Converts file names to `camelCase` constants  
-✅ Supports nested folders and all file types  
-✅ Barrel file generator to export Dart files from any directory  
-✅ Modular code generator for GetX (controller, binding, view)  
-✅ Project cloning with custom Android/iOS package names and optional path  
-✅ CLI-ready with clean syntax  
-✅ Fully customizable output structure  
+✅ Automatically scans folders and generates asset reference classes (`AppImages`, etc.)
+✅ Converts file names to `camelCase` constants
+✅ Supports nested folders and all file types
+✅ Barrel file generator to export Dart files from any directory
+✅ Modular code generator for GetX (controller, binding, view)
+✅ Project cloning with custom Android/iOS package names and optional path
+✅ CLI-ready with clean syntax
+✅ Fully customizable output structure
 ✅ Works in Flutter and pure Dart projects
 
 ---
 
 ## 📦 Use Cases
 
-- Generate `AppImages` class to avoid hardcoded asset strings
-- Create `exports.dart` barrel file to group exports cleanly
-- Scaffold complete module (binding/controller/view) with a single command
-- Clone a Flutter project with new app name and package IDs
-- Keep your imports scalable and clean in large projects
+* Generate `AppImages` class to avoid hardcoded asset strings
+* Create `exports.dart` barrel file to group exports cleanly
+* Scaffold complete module (binding/controller/view) with a single command
+* Clone a Flutter project with new app name and package IDs
+* Keep your imports scalable and clean in large projects
+
 
 ---
 
@@ -215,12 +219,12 @@ On success, the tool prints the install page URL, shortcut URL (if any), and bui
 
 ## 🗂️ Output Summary
 
-| Command   | Output Location                                  |
-|-----------|--------------------------------------------------|
-| `asset`   | `lib/generated/{class_name}.dart`                |
-| `barrel`  | `{directory}/{output_file_name}.dart`            |
-| `module`  | `{location}/{name}/...` + exports to barrel file |
-| `clone`   | `{path}/{new_project_name}/`                     |
+| Command        | Output Location                                  |
+| -------------- | ------------------------------------------------ |
+| `asset`        | `lib/generated/{class_name}.dart`                |
+| `barrel`       | `{directory}/{output_file_name}.dart`            |
+| `module`       | `{location}/{name}/...` + exports to barrel file |
+| `clone`        | `{path}/{new_project_name}/`                     |
 
 ---
 
