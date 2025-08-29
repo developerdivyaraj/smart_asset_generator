@@ -365,7 +365,7 @@ Future<void> generateAndUploadApkToLoadly({
     print('🔗 Install Page: ${uploadResult.installPageUrl}');
   }
   if (uploadResult.shortcutUrl != null) {
-    print('🔗 Shortcut: ${uploadResult.shortcutUrl}');
+    print('🔗 Shortcut: https://loadly.io/${uploadResult.shortcutUrl}');
   }
   if (uploadResult.buildKey != null) {
     print('🔑 Build Key: ${uploadResult.buildKey}');
@@ -535,7 +535,6 @@ Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
     final buildKey = payload['buildKey']?.toString();
     final installPageUrl = payload['buildURL']?.toString() ?? payload['downloadURL']?.toString();
     final shortcutUrl = payload['buildShortcutUrl']?.toString();
-
     return LoadlyUploadResult(
       buildKey: buildKey,
       installPageUrl: installPageUrl,
