@@ -1,3 +1,4 @@
-## 0.0.10
+## 0.0.11
 
-* Fixed path issue.
+* Added automated APK build and rename process with timestamp and version in filename.
+* Integrated GoFile.io upload to generate a shareable link after build.

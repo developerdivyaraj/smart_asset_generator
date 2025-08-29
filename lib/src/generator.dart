@@ -1,6 +1,13 @@
 // ignore_for_file: avoid_print
 
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:yaml/yaml.dart';
 
 
 /// ---------- ASSET GENERATOR ----------
@@ -287,7 +294,187 @@ Future<void> cloneProject({
   print('📦 iOS bundle ID: $iosPackage');
 }
 
+/// ---------- APK GENERATOR & UPLOADER ----------
+/// Builds an APK and uploads it to Loadly.
+Future<void> generateAndUploadApk({
+  required String apiKey,
+  bool isRelease = true,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  await generateAndUploadApkToLoadly(
+    apiKey: apiKey,
+    isRelease: isRelease,
+    buildInstallType: buildInstallType,
+    buildPassword: buildPassword,
+    buildUpdateDescription: buildUpdateDescription,
+  );
+}
 
+/// ---------- APK GENERATOR & UPLOADER (LOADLY) ----------
+Future<void> generateAndUploadApkToLoadly({
+  required String apiKey,
+  bool isRelease = true,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  final buildType = isRelease ? 'release' : 'debug';
+  print('🚀 Building $buildType APK...');
+
+  final buildResult = await Process.run('flutter', ['build', 'apk', '--$buildType']);
+  if (buildResult.exitCode != 0) {
+    print('❌ APK build failed:\n${buildResult.stderr}');
+    return;
+  }
+  print('✅ APK built successfully!');
+
+  // Locate APK
+  final apkPath = 'build/app/outputs/flutter-apk/app-$buildType.apk';
+  final apk = File(apkPath);
+  if (!apk.existsSync()) {
+    print('❌ APK not found at $apkPath.');
+    return;
+  }
+
+  // Prepare nice filename
+  _Metadata metadata = _getAppMetadata();
+  final timestamp = DateFormat('dd-MM-yyyy').format(DateTime.now());
+  final readableName = '${metadata.name}(v${metadata.version})$timestamp.apk';
+  final renamedInBuildDirPath = p.join('build/app/outputs/flutter-apk', readableName);
+  final renamedInBuildDir = await apk.copy(renamedInBuildDirPath);
+  print('📂 APK saved in build folder: ${renamedInBuildDir.path}');
+
+  print('☁️ Uploading to Loadly...');
+  final uploadResult = await uploadToLoadlyWithProgress(
+    renamedInBuildDir,
+    apiKey: apiKey,
+    buildInstallType: buildInstallType,
+    buildPassword: buildPassword,
+    buildUpdateDescription: buildUpdateDescription,
+  );
+
+  if (uploadResult == null) {
+    print('❌ Upload to Loadly failed.');
+    return;
+  }
+
+  print('✅ Uploaded to Loadly!');
+  if (uploadResult.installPageUrl != null) {
+    print('🔗 Install Page: ${uploadResult.installPageUrl}');
+  }
+  if (uploadResult.shortcutUrl != null) {
+    print('🔗 Shortcut: ${uploadResult.shortcutUrl}');
+  }
+  if (uploadResult.buildKey != null) {
+    print('🔑 Build Key: ${uploadResult.buildKey}');
+  }
+}
+
+class LoadlyUploadResult {
+  final String? buildKey;
+  final String? installPageUrl;
+  final String? shortcutUrl;
+
+  LoadlyUploadResult({this.buildKey, this.installPageUrl, this.shortcutUrl});
+}
+
+Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
+  File file, {
+  required String apiKey,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  final uri = Uri.parse('https://api.loadly.io/apiv2/app/upload');
+
+  final request = http.MultipartRequest('POST', uri);
+  request.fields['_api_key'] = apiKey;
+  request.fields['buildInstallType'] = buildInstallType.toString();
+  if (buildPassword != null && buildPassword.isNotEmpty) {
+    request.fields['buildPassword'] = buildPassword;
+  }
+  if (buildUpdateDescription != null && buildUpdateDescription.isNotEmpty) {
+    request.fields['buildUpdateDescription'] = buildUpdateDescription;
+  }
+
+  final totalBytes = file.lengthSync();
+  var uploadedBytes = 0;
+
+  final stream = file.openRead().transform<List<int>>(
+    StreamTransformer.fromHandlers(
+      handleData: (data, sink) {
+        uploadedBytes += data.length;
+        final progress = (uploadedBytes / totalBytes * 100).toStringAsFixed(1);
+        stdout.write('\r⬆️ Uploading... $progress%');
+        sink.add(data);
+      },
+      handleError: (error, stackTrace, sink) {
+        sink.addError(error, stackTrace);
+      },
+      handleDone: (sink) {
+        sink.close();
+      },
+    ),
+  );
+
+  final multipartFile = http.MultipartFile(
+    'file',
+    stream,
+    totalBytes,
+    filename: p.basename(file.path),
+  );
+
+  request.files.add(multipartFile);
+
+  try {
+    final response = await request.send().timeout(const Duration(minutes: 10));
+    stdout.writeln();
+
+    final respStr = await response.stream.bytesToString();
+    if (response.statusCode != 200) {
+      print('❌ Loadly upload failed with status: ${response.statusCode}\n$respStr');
+      return null;
+    }
+
+    final data = jsonDecode(respStr);
+    // Attempt to extract common fields
+    dynamic payload = data['data'] ?? data;
+    final buildKey = payload['buildKey']?.toString();
+    final installPageUrl = payload['buildURL']?.toString() ?? payload['downloadURL']?.toString();
+    final shortcutUrl = payload['buildShortcutUrl']?.toString();
+
+    return LoadlyUploadResult(
+      buildKey: buildKey,
+      installPageUrl: installPageUrl,
+      shortcutUrl: shortcutUrl,
+    );
+  } on TimeoutException {
+    stdout.writeln();
+    print('❌ Loadly upload timed out.');
+    return null;
+  } catch (e) {
+    stdout.writeln();
+    print('❌ Loadly upload error: $e');
+    return null;
+  }
+}
+
+
+class _Metadata {
+  final String name;
+  final String version;
+  _Metadata(this.name, this.version);
+}
+
+_Metadata _getAppMetadata() {
+  final pubspec = File('pubspec.yaml').readAsStringSync();
+  final yaml = loadYaml(pubspec);
+  final name = yaml['name'] ?? 'app';
+  final version = yaml['version'] ?? '1.0.0';
+  return _Metadata(name, version);
+}
 
 /// ---------- HELPERS ----------
 String getProjectName() {

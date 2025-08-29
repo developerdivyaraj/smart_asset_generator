@@ -8,6 +8,7 @@ Future<void> main(List<String> args) async {
     print('  dart run smart_asset_generator asset <directory> [ClassName]');
     print('  dart run smart_asset_generator barrel <directory> [BarrelFileName]');
     print('  dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]');
+    print('  dart run smart_asset_generator apk [release|debug] apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Update+notes]');
     return;
   }
 
@@ -56,6 +57,34 @@ Future<void> main(List<String> args) async {
     );
   } else if (command == 'module') {
     await generateModuleFromArgs(rest);
+  }else if (command == 'apk') {
+    // Usage:
+    // dart run smart_asset_generator apk [release|debug] apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Your+notes]
+    final isRelease = rest.any((e) => e.toLowerCase() == 'debug') ? false : true;
+    final argsMap = {
+      for (var e in rest)
+        if (e.contains('=')) e.split('=').first: e.split('=').last
+    };
+
+    final apiKey = argsMap['apiKey'] ?? argsMap['_api_key'];
+    if (apiKey == null || apiKey.isEmpty) {
+      print('❌ Missing apiKey.');
+      print('  Usage: dart run smart_asset_generator apk [release|debug] apiKey=YOUR_KEY [buildInstallType=1|2|3] [buildPassword=xxxx] [desc=Update+notes]');
+      return;
+    }
+
+    final installTypeStr = argsMap['installType'] ?? argsMap['buildInstallType'] ?? '1';
+    final buildInstallType = int.tryParse(installTypeStr) ?? 1;
+    final buildPassword = argsMap['password'] ?? argsMap['buildPassword'];
+    final desc = argsMap['desc'] ?? argsMap['buildUpdateDescription'];
+
+    await generateAndUploadApkToLoadly(
+      apiKey: apiKey,
+      isRelease: isRelease,
+      buildInstallType: buildInstallType,
+      buildPassword: buildPassword,
+      buildUpdateDescription: desc,
+    );
   } else {
     print('❌ Unknown command: $command');
   }
