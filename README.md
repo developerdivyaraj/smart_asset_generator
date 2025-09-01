@@ -19,6 +19,8 @@ A powerful and flexible Dart/Flutter CLI tool to **auto-generate asset reference
 ✅ CLI-ready with clean syntax
 ✅ Fully customizable output structure
 ✅ Works in Flutter and pure Dart projects
+✅ Build Android APK / iOS IPA and upload to Loadly (Diawi alternative)
+✅ One command to build both APK and IPA with install links printed
 
 ---
 
@@ -70,6 +72,9 @@ dart run smart_asset_generator <command> [arguments]
 | `module`     | Create a module with controller, binding, and view files |
 | `clone`      | Clone the entire project with new package identifiers    |
 | `apk`        | Build APK and upload to Loadly (Diawi alternative)       |
+| `ipa`        | Build IPA (macOS only) and upload to Loadly              |
+| `apps`       | Build both APK and IPA and upload to Loadly              |
+| `init`       | Create `smart_asset_generator.yaml` to save API key       |
 
 ---
 
@@ -217,6 +222,71 @@ On success, the tool prints the install page URL, shortcut URL (if any), and bui
 
 ---
 
+### 🍎 Build IPA and Upload to Loadly (macOS only)
+
+```bash
+dart run smart_asset_generator ipa [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]
+```
+
+| Argument             | Required | Description                                              |
+|----------------------|----------|----------------------------------------------------------|
+| `apiKey`             | ❌       | Loadly API key (omit if saved via init file)            |
+| `buildInstallType`   | ❌       | 1: public, 2: password, 3: invitation (default: 1)      |
+| `buildPassword`      | ❌       | Password if `buildInstallType=2`                         |
+| `desc`               | ❌       | Update description                                       |
+
+#### ✅ Example
+
+```bash
+dart run smart_asset_generator ipa apiKey=YOUR_KEY buildInstallType=1 desc="iOS test build"
+```
+
+Note: Requires macOS with iOS signing configured in Xcode.
+
+---
+
+### 🔀 Build Both: APK + IPA (with links)
+
+```bash
+dart run smart_asset_generator apps [release|debug] [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]
+```
+
+| Argument             | Required | Description                                              |
+|----------------------|----------|----------------------------------------------------------|
+| `release|debug`      | ❌       | Build type for Android (default: `release`)              |
+| `apiKey`             | ❌       | Loadly API key (omit if saved via init file)            |
+| `buildInstallType`   | ❌       | 1: public, 2: password, 3: invitation (default: 1)      |
+| `buildPassword`      | ❌       | Password if `buildInstallType=2`                         |
+| `desc`               | ❌       | Update description                                       |
+
+#### ✅ Example
+
+```bash
+dart run smart_asset_generator apps release apiKey=YOUR_KEY desc="Weekly QA build"
+```
+
+The command prints separate APK and IPA install links from Loadly.
+
+---
+
+### 🧰 One-time Init (optional)
+
+Create a project config file to store your Loadly API key and see handy example commands:
+
+```bash
+dart run smart_asset_generator init
+```
+
+This creates `smart_asset_generator.yaml`. Add your API key under:
+
+```
+loadlyApiKey: "YOUR_KEY"
+```
+
+You can still pass `apiKey=YOUR_KEY` inline to any command if you prefer.
+
+---
+
 ## 🗂️ Output Summary
 
 | Command        | Output Location                                  |
@@ -225,6 +295,9 @@ On success, the tool prints the install page URL, shortcut URL (if any), and bui
 | `barrel`       | `{directory}/{output_file_name}.dart`            |
 | `module`       | `{location}/{name}/...` + exports to barrel file |
 | `clone`        | `{path}/{new_project_name}/`                     |
+| `apk`          | `build/app/outputs/flutter-apk/` (auto-renamed APK) |
+| `ipa`          | `build/ios/ipa/` (auto-renamed IPA)              |
+| `apps`         | APK: `build/app/outputs/flutter-apk/`, IPA: `build/ios/ipa/`; prints Loadly links |
 
 ---
 
