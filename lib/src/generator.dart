@@ -1,9 +1,20 @@
 // ignore_for_file: avoid_print
 
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:yaml/yaml.dart';
+
+
 /// ---------- ASSET GENERATOR ----------
-Future<void> generateAssets({required String directoryPath, String className = 'AppAssets'}) async {
+Future<void> generateAssets({
+  required String directoryPath,
+  String className = 'AppAssets',
+}) async {
   final assetDir = Directory(directoryPath);
   if (!assetDir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
@@ -14,7 +25,11 @@ Future<void> generateAssets({required String directoryPath, String className = '
   buffer.writeln('/// Auto-generated. Do not modify by hand.');
   buffer.writeln('class $className {\n  $className._();\n');
 
-  final files = assetDir.listSync(recursive: true).whereType<File>().where((f) => !f.path.endsWith('.DS_Store')).toList();
+  final files = assetDir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => !f.path.endsWith('.DS_Store'))
+      .toList();
 
   for (var file in files) {
     final relativePath = file.path.replaceAll('\\', '/');
@@ -34,25 +49,37 @@ Future<void> generateAssets({required String directoryPath, String className = '
 }
 
 /// ---------- BARREL GENERATOR ----------
-Future<void> generateBarrelFile({required String directoryPath, String barrelFileName = 'exports'}) async {
-  final excludedFiles = ['firebase_options_dev.dart', 'firebase_options_stg.dart'];
+Future<void> generateBarrelFile({
+  required String directoryPath,
+  String barrelFileName = 'exports',
+}) async {
+  final excludedFiles = [
+    'firebase_options_dev.dart',
+    'firebase_options_stg.dart',
+  ];
   final dir = Directory(directoryPath);
   if (!dir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
     return;
   }
 
-  final dartFiles =
-      dir.listSync(recursive: true).whereType<File>().where((f) {
-        final fileName = f.uri.pathSegments.last;
-        return f.path.endsWith('.dart') && fileName != '${barrelFileName.toSnakeCase()}.dart' && !excludedFiles.contains(fileName);
-      }).toList();
+  final dartFiles = dir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) {
+    final fileName = f.uri.pathSegments.last;
+    return f.path.endsWith('.dart') &&
+        fileName != '${barrelFileName.toSnakeCase()}.dart' &&
+        !excludedFiles.contains(fileName);
+  })
+      .toList();
 
   dartFiles.sort((a, b) => a.path.compareTo(b.path));
 
   final buffer = StringBuffer();
   for (var file in dartFiles) {
-    final relativePath = file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath =
+    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
     buffer.writeln("export '$relativePath';");
   }
 
@@ -67,7 +94,7 @@ Future<void> generateBarrelFile({required String directoryPath, String barrelFil
 Future<void> generateModuleFromArgs(List<String> args) async {
   final argsMap = {
     for (var e in args)
-      if (e.contains('=')) e.split('=').first: e.split('=').last,
+      if (e.contains('=')) e.split('=').first: e.split('=').last
   };
 
   final name = argsMap['name'];
@@ -75,17 +102,23 @@ Future<void> generateModuleFromArgs(List<String> args) async {
   final exportPath = argsMap['export'];
 
   if (name == null || location == null) {
-    print(
-      '❌ Missing required arguments.\nUsage:\n'
-      'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]',
-    );
+    print('❌ Missing required arguments.\nUsage:\n'
+        'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]');
     return;
   }
 
-  await generateModule(name: name, location: location, exportFilePath: exportPath ?? 'lib/exports.dart');
+  await generateModule(
+    name: name,
+    location: location,
+    exportFilePath: exportPath ?? 'lib/exports.dart',
+  );
 }
 
-Future<void> generateModule({required String name, required String location, required String exportFilePath}) async {
+Future<void> generateModule({
+  required String name,
+  required String location,
+  required String exportFilePath,
+}) async {
   final baseDir = Directory('$location/$name');
   final bindingDir = Directory('${baseDir.path}/bindings');
   final controllerDir = Directory('${baseDir.path}/controller');
@@ -103,7 +136,11 @@ Future<void> generateModule({required String name, required String location, req
   final viewPath = '$location/$name/view/${snake}_page.dart';
 
   // Confirm overwrite if any file exists
-  final existingFiles = [File(bindingPath), File(controllerPath), File(viewPath)].where((f) => f.existsSync()).toList();
+  final existingFiles = [
+    File(bindingPath),
+    File(controllerPath),
+    File(viewPath),
+  ].where((f) => f.existsSync()).toList();
 
   if (existingFiles.isNotEmpty) {
     stdout.write('⚠️ One or more files already exist. Overwrite? (y/n): ');
@@ -189,14 +226,12 @@ Future<void> cloneProject({
   final allFiles = newDir
       .listSync(recursive: true)
       .whereType<File>()
-      .where(
-        (f) =>
-            !f.path.endsWith('.png') &&
-            !f.path.endsWith('.jpg') &&
-            !f.path.endsWith('.webp') &&
-            !f.path.contains('/.git/') &&
-            !f.path.contains('/build/'),
-      );
+      .where((f) =>
+  !f.path.endsWith('.png') &&
+      !f.path.endsWith('.jpg') &&
+      !f.path.endsWith('.webp') &&
+      !f.path.contains('/.git/') &&
+      !f.path.contains('/build/'));
 
   // 4. Rename and update android/{oldProjectName}_android.iml
   final androidIml = File('${newDir.path}/android/${oldProjectName}_android.iml');
@@ -248,7 +283,7 @@ Future<void> cloneProject({
     var content = await iosPlist.readAsString();
     content = content.replaceAllMapped(
       RegExp(r'<key>CFBundleIdentifier</key>\s*<string>.*</string>'),
-      (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
+          (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
     );
     await iosPlist.writeAsString(content);
   }
@@ -257,6 +292,363 @@ Future<void> cloneProject({
   print('✅ Project cloned to ${newDir.path}');
   print('📦 Android package: $androidPackage');
   print('📦 iOS bundle ID: $iosPackage');
+}
+
+/// ---------- APK GENERATOR & UPLOADER ----------
+/// Builds an APK and uploads it to Loadly.
+Future<void> generateAndUploadApk({
+  required String apiKey,
+  bool isRelease = true,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  await generateAndUploadApkToLoadly(
+    apiKey: apiKey,
+    isRelease: isRelease,
+    buildInstallType: buildInstallType,
+    buildPassword: buildPassword,
+    buildUpdateDescription: buildUpdateDescription,
+  );
+}
+
+/// ---------- APK GENERATOR & UPLOADER (LOADLY) ----------
+Future<LoadlyUploadResult?> generateAndUploadApkToLoadly({
+  required String apiKey,
+  bool isRelease = true,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  final buildType = isRelease ? 'release' : 'debug';
+  print('🚀 Building $buildType APK...');
+
+  final buildResult = await Process.run('flutter', ['build', 'apk', '--$buildType']);
+  if (buildResult.exitCode != 0) {
+    print('❌ APK build failed:\n${buildResult.stderr}');
+    return null;
+  }
+  print('✅ APK built successfully!');
+
+  // Locate APK
+  final apkPath = 'build/app/outputs/flutter-apk/app-$buildType.apk';
+  final apk = File(apkPath);
+  if (!apk.existsSync()) {
+    print('❌ APK not found at $apkPath.');
+    return null;
+  }
+
+  // Prepare nice filename
+  _Metadata metadata = _getAppMetadata();
+  final timestamp = DateFormat('dd-MM-yyyy').format(DateTime.now());
+  final readableName = '${metadata.name}(v${metadata.version})$timestamp.apk';
+  final renamedInBuildDirPath = p.join('build/app/outputs/flutter-apk', readableName);
+  final renamedInBuildDir = await apk.copy(renamedInBuildDirPath);
+  print('📂 APK saved in build folder: ${renamedInBuildDir.path}');
+
+  print('☁️ Uploading to Loadly...');
+  final uploadResult = await uploadToLoadlyWithProgress(
+    renamedInBuildDir,
+    apiKey: apiKey,
+    buildInstallType: buildInstallType,
+    buildPassword: buildPassword,
+    buildUpdateDescription: buildUpdateDescription,
+  );
+
+  if (uploadResult == null) {
+    print('❌ Upload to Loadly failed.');
+    return null;
+  }
+
+  print('✅ Uploaded to Loadly!');
+  if (uploadResult.installPageUrl != null) {
+    print('🔗 Install Page: ${uploadResult.installPageUrl}');
+  }
+  if (uploadResult.shortcutUrl != null) {
+    print('🔗 Link: https://loadly.io/${uploadResult.shortcutUrl}');
+  }
+  if (uploadResult.buildKey != null) {
+    print('🔑 Build Key: ${uploadResult.buildKey}');
+  }
+  return uploadResult;
+}
+
+/// ---------- IPA GENERATOR & UPLOADER (LOADLY) ----------
+Future<LoadlyUploadResult?> generateAndUploadIpaToLoadly({
+  required String apiKey,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  if (!Platform.isMacOS) {
+    print('❌ IPA build is only supported on macOS.');
+    return null;
+  }
+
+  print('🚀 Building iOS IPA (release)...');
+
+  final buildResult = await Process.run('flutter', ['build', 'ipa']);
+  if (buildResult.exitCode != 0) {
+    print('❌ IPA build failed:\n${buildResult.stderr}');
+    return null;
+  }
+  print('✅ IPA built successfully!');
+
+  // Locate IPA
+  final ipaDir = Directory('build/ios/ipa');
+  if (!ipaDir.existsSync()) {
+    print('❌ IPA output directory not found at build/ios/ipa');
+    return null;
+  }
+  final ipaFiles = ipaDir
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.toLowerCase().endsWith('.ipa'))
+      .toList();
+  if (ipaFiles.isEmpty) {
+    print('❌ No .ipa found in build/ios/ipa');
+    return null;
+  }
+  ipaFiles.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+  final ipa = ipaFiles.last;
+
+  // Prepare nice filename
+  _Metadata metadata = _getAppMetadata();
+  final timestamp = DateFormat('dd-MM-yyyy').format(DateTime.now());
+  final readableName = '${metadata.name}(v${metadata.version})$timestamp.ipa';
+  final renamedPath = p.join(ipaDir.path, readableName);
+  final renamedIpa = await ipa.copy(renamedPath);
+  print('📂 IPA saved in build folder: ${renamedIpa.path}');
+
+  print('☁️ Uploading to Loadly...');
+  final uploadResult = await uploadToLoadlyWithProgress(
+    renamedIpa,
+    apiKey: apiKey,
+    buildInstallType: buildInstallType,
+    buildPassword: buildPassword,
+    buildUpdateDescription: buildUpdateDescription,
+  );
+
+  if (uploadResult == null) {
+    print('❌ Upload to Loadly failed.');
+    return null;
+  }
+
+  print('✅ Uploaded to Loadly!');
+  if (uploadResult.installPageUrl != null) {
+    print('🔗 Install Page: ${uploadResult.installPageUrl}');
+  }
+  if (uploadResult.shortcutUrl != null) {
+    print('🔗 Shortcut: https://loadly.io/${uploadResult.shortcutUrl}');
+  }
+  if (uploadResult.buildKey != null) {
+    print('🔑 Build Key: ${uploadResult.buildKey}');
+  }
+  return uploadResult;
+}
+
+class LoadlyUploadResult {
+  final String? buildKey;
+  final String? installPageUrl;
+  final String? shortcutUrl;
+
+  LoadlyUploadResult({this.buildKey, this.installPageUrl, this.shortcutUrl});
+}
+
+/// ---------- PROJECT CONFIG HELPERS ----------
+Future<void> ensureProjectConfigFile() async {
+  final file = File('smart_asset_generator.yaml');
+  if (!file.existsSync()) {
+    const defaultContent = '# Smart Asset Generator configuration\n'
+        '# Set your Loadly API key here. This is used for apk uploads.\n'
+        'loadlyApiKey: ""\n';
+    await file.writeAsString(defaultContent);
+    print('📝 Created smart_asset_generator.yaml. Please add your Loadly API key.');
+  }
+}
+
+String? readLoadlyApiKeyFromProjectConfig() {
+  final file = File('smart_asset_generator.yaml');
+  if (!file.existsSync()) return null;
+  try {
+    final yamlStr = file.readAsStringSync();
+    final doc = loadYaml(yamlStr);
+    if (doc is YamlMap) {
+      final key = doc['loadlyApiKey']?.toString();
+      if (key != null && key.isNotEmpty) return key;
+    }
+  } catch (_) {}
+  return null;
+}
+
+Future<void> initProjectConfig({bool overwrite = false}) async {
+  final file = File('smart_asset_generator.yaml');
+  if (file.existsSync() && !overwrite) {
+    print('ℹ️ smart_asset_generator.yaml already exists at ${file.path}');
+    return;
+  }
+  await file.writeAsString(_buildProjectConfigTemplate());
+  print('✅ Created smart_asset_generator.yaml with commands and empty Loadly API key.');
+}
+
+String _buildProjectConfigTemplate() {
+  return '# Smart Asset Generator configuration\n'
+      '# Provide your Loadly API key below or use the config command to set it.\n'
+      'loadlyApiKey: ""\n'
+      '\n'
+      '# Helpful commands you can run:\n'
+      'commands without parameters:\n'
+      '  - dart run smart_asset_generator asset \n'
+      '  - dart run smart_asset_generator barrel \n'
+      '  - dart run smart_asset_generator module name=login location=lib/modules/auth/login \n'
+      '  - dart run smart_asset_generator apk \n'
+      '  - dart run smart_asset_generator ipa \n'
+      '  - dart run smart_asset_generator apps \n'
+      '  - dart run smart_asset_generator init\n'
+      
+      'commands with parameters:\n'
+      '  - dart run smart_asset_generator asset <asset_path> [class_name]\n'
+      '  - dart run smart_asset_generator barrel <directory_path> [output_file_name]\n'
+      '  - dart run smart_asset_generator module name=<module_name> location=<path> [export=<barrel_file_path>]\n'
+      '  - dart run smart_asset_generator clone name=<new_project_name> android=<android_package> ios=<ios_package> [path=<directory_path>]\n'
+      '  - dart run smart_asset_generator apk [release|debug] [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]\n'
+      '  - dart run smart_asset_generator ipa [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]'
+      '  - dart run smart_asset_generator apps [release|debug] [apiKey=<YOUR_API_KEY>] [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]'
+      '  - dart run smart_asset_generator init\n';
+}
+
+Future<void> setLoadlyApiKey({
+  required String key,
+}) async {
+  final file = File('smart_asset_generator.yaml');
+  if (!file.existsSync()) {
+    const header = '# Smart Asset Generator configuration\n'
+        '# Set your Loadly API key here. This is used for apk uploads.\n';
+    await file.writeAsString('${header}loadlyApiKey: "$key"\n');
+  } else {
+    await _upsertYamlKey(file, 'loadlyApiKey', key);
+  }
+  print('✅ Saved Loadly API key to ${file.path}');
+}
+
+Future<void> _upsertYamlKey(File file, String yamlKey, String value) async {
+  final exists = file.existsSync();
+  String content = exists ? await file.readAsString() : '';
+  if (content.trim().isEmpty) {
+    await file.writeAsString('$yamlKey: "$value"\n');
+    return;
+  }
+  final lines = content.split('\n');
+  bool updated = false;
+  final newLines = <String>[];
+  for (final line in lines) {
+    final trimmed = line.trimLeft();
+    if (trimmed.startsWith('$yamlKey:')) {
+      final indentLength = line.length - trimmed.length;
+      final indent = indentLength > 0 ? line.substring(0, indentLength) : '';
+      newLines.add('$indent$yamlKey: "$value"');
+      updated = true;
+    } else {
+      newLines.add(line);
+    }
+  }
+  if (!updated) newLines.add('$yamlKey: "$value"');
+  await file.writeAsString(newLines.join('\n'));
+}
+
+Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
+  File file, {
+  required String apiKey,
+  int buildInstallType = 1,
+  String? buildPassword,
+  String? buildUpdateDescription,
+}) async {
+  final uri = Uri.parse('https://api.loadly.io/apiv2/app/upload');
+
+  final request = http.MultipartRequest('POST', uri);
+  request.fields['_api_key'] = apiKey;
+  request.fields['buildInstallType'] = buildInstallType.toString();
+  if (buildPassword != null && buildPassword.isNotEmpty) {
+    request.fields['buildPassword'] = buildPassword;
+  }
+  if (buildUpdateDescription != null && buildUpdateDescription.isNotEmpty) {
+    request.fields['buildUpdateDescription'] = buildUpdateDescription;
+  }
+
+  final totalBytes = file.lengthSync();
+  var uploadedBytes = 0;
+
+  final stream = file.openRead().transform<List<int>>(
+    StreamTransformer.fromHandlers(
+      handleData: (data, sink) {
+        uploadedBytes += data.length;
+        final progress = (uploadedBytes / totalBytes * 100).toStringAsFixed(1);
+        stdout.write('\r⬆️ Uploading... $progress%');
+        sink.add(data);
+      },
+      handleError: (error, stackTrace, sink) {
+        sink.addError(error, stackTrace);
+      },
+      handleDone: (sink) {
+        sink.close();
+      },
+    ),
+  );
+
+  final multipartFile = http.MultipartFile(
+    'file',
+    stream,
+    totalBytes,
+    filename: p.basename(file.path),
+  );
+
+  request.files.add(multipartFile);
+
+  try {
+    final response = await request.send().timeout(const Duration(minutes: 10));
+    stdout.writeln();
+
+    final respStr = await response.stream.bytesToString();
+    if (response.statusCode != 200) {
+      print('❌ Loadly upload failed with status: ${response.statusCode}\n$respStr');
+      return null;
+    }
+
+    final data = jsonDecode(respStr);
+    // Attempt to extract common fields
+    dynamic payload = data['data'] ?? data;
+    final buildKey = payload['buildKey']?.toString();
+    final installPageUrl = payload['buildURL']?.toString() ?? payload['downloadURL']?.toString();
+    final shortcutUrl = payload['buildShortcutUrl']?.toString();
+    return LoadlyUploadResult(
+      buildKey: buildKey,
+      installPageUrl: installPageUrl,
+      shortcutUrl: shortcutUrl,
+    );
+  } on TimeoutException {
+    stdout.writeln();
+    print('❌ Loadly upload timed out.');
+    return null;
+  } catch (e) {
+    stdout.writeln();
+    print('❌ Loadly upload error: $e');
+    return null;
+  }
+}
+
+
+class _Metadata {
+  final String name;
+  final String version;
+  _Metadata(this.name, this.version);
+}
+
+_Metadata _getAppMetadata() {
+  final pubspec = File('pubspec.yaml').readAsStringSync();
+  final yaml = loadYaml(pubspec);
+  final name = yaml['name'] ?? 'app';
+  final version = yaml['version'] ?? '1.0.0';
+  return _Metadata(name, version);
 }
 
 /// ---------- HELPERS ----------
@@ -275,7 +667,7 @@ String getProjectName() {
 String _bindingTemplate(String name) {
   final project = getProjectName();
   return '''
-import 'package:$project/exports.dart';
+import 'package:$project/$project.dart';
 
 class ${name}Binding extends Bindings {
   @override
@@ -289,7 +681,7 @@ class ${name}Binding extends Bindings {
 String _controllerTemplate(String name) {
   final project = getProjectName();
   return '''
-import 'package:$project/exports.dart';
+import 'package:$project/$project.dart';
 
 class ${name}Controller extends GetxController {
   @override
@@ -304,7 +696,7 @@ class ${name}Controller extends GetxController {
 String _pageTemplate(String name) {
   final project = getProjectName();
   return '''
-import 'package:$project/exports.dart';
+import 'package:$project/$project.dart';
 
 class ${name}Page extends GetView<${name}Controller> {
   const ${name}Page({super.key});
@@ -324,15 +716,19 @@ class ${name}Page extends GetView<${name}Controller> {
 String _toCamelCase(String input) {
   final sanitized = input.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   final parts = sanitized.split('_');
-  return parts.first.toLowerCase() + parts.skip(1).map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1)).join();
+  return parts.first.toLowerCase() +
+      parts.skip(1).map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1)).join();
 }
 
 extension SnakeCaseExtension on String {
   String toSnakeCase() {
-    return replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'), (match) => '_${match.group(0)!.toLowerCase()}').toLowerCase();
+    return replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'),
+            (match) => '_${match.group(0)!.toLowerCase()}').toLowerCase();
   }
 
   String toPascalCase() {
-    return split('_').map((s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1) : '').join();
+    return split('_')
+        .map((s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1) : '')
+        .join();
   }
 }

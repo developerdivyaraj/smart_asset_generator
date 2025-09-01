@@ -69,6 +69,7 @@ dart run smart_asset_generator <command> [arguments]
 | `barrel`     | Generate a barrel file that exports Dart files           |
 | `module`     | Create a module with controller, binding, and view files |
 | `clone`      | Clone the entire project with new package identifiers    |
+| `apk`        | Build APK and upload to Loadly (Diawi alternative)       |
 
 ---
 
@@ -189,6 +190,30 @@ dart run smart_asset_generator clone name=new_app android=com.new.android ios=co
   - Renames root `.iml` and Android module `.iml` files
   - Replaces package names and project references in all source files
 - Ensures the cloned project is ready to open and run independently
+
+---
+
+### ☁️ Build APK and Upload to Loadly
+
+```bash
+dart run smart_asset_generator apk [release|debug] apiKey=<YOUR_API_KEY> [buildInstallType=1|2|3] [buildPassword=<pwd>] [desc=<notes>]
+```
+
+| Argument             | Required | Description                                              |
+|----------------------|----------|----------------------------------------------------------|
+| `release|debug`      | ❌       | Build type (default: `release`)                          |
+| `apiKey`             | ✅       | Loadly API key (`_api_key`)                              |
+| `buildInstallType`   | ❌       | 1: public, 2: password, 3: invitation (default: 1)      |
+| `buildPassword`      | ❌       | Password if `buildInstallType=2`                         |
+| `desc`               | ❌       | Update description                                       |
+
+#### ✅ Example
+
+```bash
+dart run smart_asset_generator apk release apiKey=YOUR_KEY buildInstallType=1 desc="Initial release"
+```
+
+On success, the tool prints the install page URL, shortcut URL (if any), and build key returned by Loadly.
 
 ---
 
