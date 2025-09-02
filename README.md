@@ -285,6 +285,8 @@ loadlyApiKey: "YOUR_KEY"
 
 You can still pass `apiKey=YOUR_KEY` inline to any command if you prefer.
 
+You can visit this website to create apiKey https://loadly.io/doc/view/api
+
 ---
 
 ## 🗂️ Output Summary
