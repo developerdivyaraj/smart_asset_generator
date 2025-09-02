@@ -387,7 +387,7 @@ Future<LoadlyUploadResult?> generateAndUploadIpaToLoadly({
 
   print('🚀 Building iOS IPA (release)...');
 
-  final buildResult = await Process.run('flutter', ['build', 'ipa']);
+  final buildResult = await Process.run('flutter', ['build', 'ipa','--export-method', 'ad-hoc',]);
   if (buildResult.exitCode != 0) {
     print('❌ IPA build failed:\n${buildResult.stderr}');
     return null;
