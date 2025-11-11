@@ -69,10 +69,6 @@ Future<void> generateBarrelFile({
   required String directoryPath,
   String barrelFileName = 'exports',
 }) async {
-  final excludedFiles = [
-    'firebase_options_dev.dart',
-    'firebase_options_stg.dart',
-  ];
   final dir = Directory(directoryPath);
   if (!dir.existsSync()) {
     print('❌ Directory does not exist: $directoryPath');
