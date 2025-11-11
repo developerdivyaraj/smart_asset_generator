@@ -1,5 +1,20 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'templates/pr_checker_template.dart';
+
+const String _gitlabCiJobSnippet = r'''
+pr_checks:
+  stage: mr-check
+  image: python:3.10
+  before_script:
+    - pip install requests
+  script:
+    - python3 .gitlab/pr_checker.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  allow_failure: false
+''';
 
 /// ---------- ASSET GENERATOR ----------
 Future<void> generateAssets({
@@ -16,15 +31,17 @@ Future<void> generateAssets({
   buffer.writeln('/// Auto-generated. Do not modify by hand.');
   buffer.writeln('class $className {\n  $className._();\n');
 
-  final files = assetDir
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => !f.path.endsWith('.DS_Store'))
-      .toList();
+  final files =
+      assetDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => !f.path.endsWith('.DS_Store'))
+          .toList();
 
   for (var file in files) {
-    final relativePath =
-    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath = file.path
+        .replaceFirst('$directoryPath/', '')
+        .replaceAll('\\', '/');
     final fileName = relativePath.split('/').last;
     final varName = _toCamelCase(fileName.replaceAll(RegExp(r'\.\w+$'), ''));
     buffer.writeln("  static const String $varName = '$relativePath';");
@@ -51,20 +68,24 @@ Future<void> generateBarrelFile({
     return;
   }
 
-  final dartFiles = dir
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) =>
-  f.path.endsWith('.dart') &&
-      !f.path.endsWith('${barrelFileName.toSnakeCase()}.dart'))
-      .toList();
+  final dartFiles =
+      dir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where(
+            (f) =>
+                f.path.endsWith('.dart') &&
+                !f.path.endsWith('${barrelFileName.toSnakeCase()}.dart'),
+          )
+          .toList();
 
   dartFiles.sort((a, b) => a.path.compareTo(b.path));
 
   final buffer = StringBuffer();
   for (var file in dartFiles) {
-    final relativePath =
-    file.path.replaceFirst('$directoryPath/', '').replaceAll('\\', '/');
+    final relativePath = file.path
+        .replaceFirst('$directoryPath/', '')
+        .replaceAll('\\', '/');
     buffer.writeln("export '$relativePath';");
   }
 
@@ -72,14 +93,16 @@ Future<void> generateBarrelFile({
   final barrelFile = File('$directoryPath/$fileName');
   await barrelFile.writeAsString(buffer.toString());
 
-  print('📦 $directoryPath/$fileName generated with ${dartFiles.length} exports.');
+  print(
+    '📦 $directoryPath/$fileName generated with ${dartFiles.length} exports.',
+  );
 }
 
 /// ---------- MODULE GENERATOR ----------
 Future<void> generateModuleFromArgs(List<String> args) async {
   final argsMap = {
     for (var e in args)
-      if (e.contains('=')) e.split('=').first: e.split('=').last
+      if (e.contains('=')) e.split('=').first: e.split('=').last,
   };
 
   final name = argsMap['name'];
@@ -87,8 +110,10 @@ Future<void> generateModuleFromArgs(List<String> args) async {
   final exportPath = argsMap['export'];
 
   if (name == null || location == null) {
-    print('❌ Missing required arguments.\nUsage:\n'
-        'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]');
+    print(
+      '❌ Missing required arguments.\nUsage:\n'
+      'dart run smart_asset_generator module name=home location=lib/modules [export=lib/exports.dart]',
+    );
     return;
   }
 
@@ -125,7 +150,8 @@ Future<void> generateModule({
   await File(viewPath).writeAsString(_pageTemplate(pascal));
 
   final project = getProjectName();
-  String stripLib(String path) => path.startsWith('lib/') ? path.substring(4) : path;
+  String stripLib(String path) =>
+      path.startsWith('lib/') ? path.substring(4) : path;
 
   final exportLines = [
     "export 'package:$project/${stripLib(bindingPath)}';",
@@ -151,7 +177,93 @@ Future<void> generateModule({
   print('📦 Exports added to $exportFilePath');
 }
 
+/// ---------- PR CHECKER GENERATOR ----------
+Future<void> generateGetxPrChecker({
+  String directoryPath = '.gitlab',
+  String fileName = 'pr_checker.py',
+  String projectLabel = 'GetX Project',
+  String gitlabToken = '',
+  bool overwrite = false,
+}) async {
+  final directory = Directory(directoryPath);
+  await directory.create(recursive: true);
+
+  final file = File('${directory.path}/$fileName');
+
+  if (file.existsSync() && !overwrite) {
+    print(
+      '⚠️  ${file.path} already exists. Re-run with overwrite=true to replace the file.',
+    );
+    return;
+  }
+
+  final tokenLiteral = gitlabToken.isEmpty ? 'None' : jsonEncode(gitlabToken);
+
+  final content = getxPrCheckerTemplate
+      .replaceAll('{{PROJECT_LABEL}}', projectLabel)
+      .replaceAll('{{GITLAB_TOKEN_LITERAL}}', tokenLiteral);
+
+  await file.writeAsString(content);
+  await _ensureGitlabCiConfiguration();
+
+  print('✅ ${file.path} ${overwrite ? 'updated' : 'created'}.');
+}
+
 /// ---------- HELPERS ----------
+Future<void> _ensureGitlabCiConfiguration() async {
+  final ciFile = File('.gitlab-ci.yml');
+
+  if (ciFile.existsSync()) {
+    var ciContent = await ciFile.readAsString();
+    var updated = false;
+
+    final hasMrCheckStage = RegExp(
+      r'^\s*-\s*mr-check\s*$',
+      multiLine: true,
+    ).hasMatch(ciContent);
+    if (!hasMrCheckStage) {
+      final stagesRegex = RegExp(
+        r'stages:\s*\n((?:\s+- .*\n)*)',
+        multiLine: true,
+      );
+      final match = stagesRegex.firstMatch(ciContent);
+      if (match != null) {
+        final existingBlock = match.group(0)!;
+        final insertion =
+            existingBlock.endsWith('\n')
+                ? '$existingBlock  - mr-check\n'
+                : '$existingBlock\n  - mr-check\n';
+        ciContent = ciContent.replaceFirst(existingBlock, insertion);
+      } else {
+        ciContent = 'stages:\n  - mr-check\n\n$ciContent';
+      }
+      updated = true;
+    }
+
+    final hasJob = RegExp(
+      r'^\s*pr_checks:\s*$',
+      multiLine: true,
+    ).hasMatch(ciContent);
+    if (!hasJob) {
+      if (!ciContent.endsWith('\n')) {
+        ciContent += '\n';
+      }
+      if (!ciContent.endsWith('\n\n')) {
+        ciContent += '\n';
+      }
+      ciContent += '$_gitlabCiJobSnippet\n';
+      updated = true;
+    }
+
+    if (updated) {
+      await ciFile.writeAsString(ciContent);
+    }
+  } else {
+    final ciContent = 'stages:\n  - mr-check\n\n$_gitlabCiJobSnippet\n';
+    await ciFile.writeAsString(ciContent);
+  }
+}
+
 String getProjectName() {
   final pubspec = File('pubspec.yaml');
   if (!pubspec.existsSync()) return 'your_project';
@@ -217,13 +329,18 @@ String _toCamelCase(String input) {
   final sanitized = input.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   final parts = sanitized.split('_');
   return parts.first.toLowerCase() +
-      parts.skip(1).map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1)).join();
+      parts
+          .skip(1)
+          .map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1))
+          .join();
 }
 
 extension SnakeCaseExtension on String {
   String toSnakeCase() {
-    return replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'),
-            (match) => '_${match.group(0)!.toLowerCase()}').toLowerCase();
+    return replaceAllMapped(
+      RegExp(r'(?<=[a-z])[A-Z]'),
+      (match) => '_${match.group(0)!.toLowerCase()}',
+    ).toLowerCase();
   }
 
   String toPascalCase() {

@@ -1,0 +1,14 @@
+stages:
+  - mr-check
+
+pr_checks:
+  stage: mr-check
+  image: python:3.10
+  before_script:
+    - pip install requests
+  script:
+    - python3 .gitlab/pr_checker.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  allow_failure: false
+
