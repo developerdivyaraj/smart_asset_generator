@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GitLab Merge Request Checker - Email Test Project
+GitLab Merge Request Checker - Ashraf Rewamp
 Validates MR against Flutter/Dart project-specific rules.
 """
 
@@ -14,7 +14,18 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Tuple, Set
 
 DEFAULT_GITLAB_TOKEN = None
-EMAIL_RECIPIENTS = ["test1@test.com","test2@test.com"]
+PROJECT_NAME = "Ashraf Rewamp"
+
+# PM CONTROLLED RECIPIENTS:
+# To enable emails, set 'PR_CHECKER_EMAILS' in your GitLab Project Settings (CI/CD Variables).
+# Value should be a comma-separated list of emails. If not set, no emails will be sent.
+def _get_recipients():
+    env_emails = os.getenv('PR_CHECKER_EMAILS', '')
+    if env_emails:
+        return [e.strip() for e in env_emails.split(',') if e.strip()]
+    return []
+
+EMAIL_RECIPIENTS = _get_recipients()
 
 # SMTP Configuration (Preferably set via CI/CD variables)
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -24,7 +35,7 @@ SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 SMTP_SENDER = os.getenv('SMTP_SENDER', SMTP_USER)
 
 class GetxMrChecker:
-    """Handles all MR validation checks for Email Test Project Flutter project."""
+    """Handles all MR validation checks for project Flutter project."""
     
     # Conventional Commit prefixes for Flutter project
     CONVENTIONAL_PREFIXES = [
@@ -526,7 +537,7 @@ class GetxMrChecker:
         checked_files = 0
         checked_file_names = []
         
-        # Email Test Project project's specific flutter_screenutil rules
+        # Ashraf Rewamp project's specific flutter_screenutil rules
         # Note: Excluding 0 values as they don't need ScreenUtil extensions
         broken_patterns = [
             # Hardcoded dimensions in SizedBox (only match numbers NOT followed by .h/.w, excluding 0)
@@ -554,7 +565,7 @@ class GetxMrChecker:
             (r'Radius\.circular\(\s*([1-9]\d*(?:\.\d+)?)\s*\)', 'Use \1.r instead of hardcoded radius'),
             (r'borderRadius:\s*BorderRadius\.circular\(\s*([1-9]\d*(?:\.\d+)?)\s*\)', 'Use \1.r instead of hardcoded radius'),
             
-            # Email Test Project specific EdgeInsets rules (excluding 0)
+            # Ashraf Rewamp specific EdgeInsets rules (excluding 0)
             # left/right use .w, top/bottom use .h, horizontal use .w, vertical use .h
             (r'EdgeInsets\.all\(\s*([1-9]\d*(?:\.\d+)?)(?![.\w])', 'Use EdgeInsets.all(\1.w) for width-based padding'),
             (r'horizontal:\s*([1-9]\d*(?:\.\d+)?)(?![.\w])', 'Use horizontal: \1.w'),
@@ -614,12 +625,12 @@ class GetxMrChecker:
             files_list = ', '.join([f"`{f}`" for f in checked_file_names[:5]])
             if len(checked_file_names) > 5:
                 files_list += f" and {len(checked_file_names) - 5} more"
-            return True, f"✅ **Flutter ScreenUtil**: All patterns follow Email Test Project conventions ({checked_files} files checked: {files_list})", issues
+            return True, f"✅ **Flutter ScreenUtil**: All patterns follow Ashraf Rewamp conventions ({checked_files} files checked: {files_list})", issues
         else:
             violations_list = '\n'.join(violations[:10])
             if len(violations) > 10:
                 violations_list += f"\n  - ... and {len(violations) - 10} more"
-            issues.append("Email Test Project flutter_screenutil rules:")
+            issues.append("Ashraf Rewamp flutter_screenutil rules:")
             issues.append("- Height: .h | Width: .w | Font Size: .sp | Radius: .r")
             issues.append("- Padding: left/right/horizontal → .w | top/bottom/vertical → .h")
             issues.append("- Note: 0 values don't need extensions (0.w, 0.h, 0.sp, 0.r are not required)")
@@ -1181,17 +1192,77 @@ class GetxMrChecker:
         print(f"📧 Sending email report to: {', '.join(EMAIL_RECIPIENTS)}...")
         
         try:
-            # Convert markdown-ish report to basic HTML
+            # Determine status color and icon
+            status_color = "#28a745" if "PASSED" in status and "WARNING" not in status else "#ffc107" if "WARNING" in status else "#dc3545"
+            header_color = "#1f2937" # Dark blue-grey for a premium professional look
+            
+            # Convert markdown-ish report to structured HTML
+            # 1. Headers
+            formatted_report = report_body.replace('### ', '<h3 style="color:' + header_color + '; margin-top:25px; border-bottom:1px solid #eee; padding-bottom:8px;">')
+            formatted_report = formatted_report.replace('## ', '<h2 style="color:' + header_color + '; margin-top:30px;">')
+            
+            # 2. Success/Error emojis in the body
+            formatted_report = formatted_report.replace('✅', '<span style="color:#28a745;">✅</span>')
+            formatted_report = formatted_report.replace('❌', '<span style="color:#dc3545;">❌</span>')
+            formatted_report = formatted_report.replace('⚠️', '<span style="color:#ffc107;">⚠️</span>')
+            
+            # 3. Newlines
+            formatted_report = formatted_report.replace('\n', '<br>')
+
             html_body = f"""
+            <!DOCTYPE html>
             <html>
-                <body style="font-family: sans-serif; line-height: 1.6; color: #333;">
-                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                        <h2 style="color: #2c3e50;">{status}</h2>
-                        <div style="background-color: #f9f9f9; padding: 15px; border-left: 5px solid #3498db; margin: 20px 0;">
-                            {report_body.replace('\n', '<br>')}
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                </head>
+                <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #1f2937;">
+                    <div style="max-width: 700px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                        <!-- Header -->
+                        <div style="background-color: {header_color}; padding: 30px; text-align: center; border-bottom: 4px solid {status_color};">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">
+                                {PROJECT_NAME}
+                            </h1>
+                            <p style="margin: 8px 0 0 0; color: #9ca3af; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                                Code Quality Report
+                            </p>
                         </div>
-                        <p style="font-size: 0.8em; color: #777; border-top: 1px solid #eee; padding-top: 10px; margin-top: 20px;">
-                            This is an automated report from the Code Quality Checker CI pipeline.
+
+                        <!-- Status Bar -->
+                        <div style="background-color: {status_color}; padding: 15px; text-align: center;">
+                            <span style="color: #ffffff; font-size: 16px; font-weight: 600;">
+                                {status}
+                            </span>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div style="padding: 40px; line-height: 1.7;">
+                            <div style="background-color: #f9fafb; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+                                <p style="margin: 0; font-size: 15px; font-weight: 500; color: #374151;">
+                                    Report generated for Merge Request <strong>!{self.mr_iid}</strong>
+                                </p>
+                            </div>
+
+                            <div style="font-size: 15px; color: #4b5563;">
+                                {formatted_report}
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="padding: 30px; background-color: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
+                            <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+                                This report was automatically generated by <strong>Smart Asset Generator</strong>
+                            </p>
+                            <div style="margin-top: 15px;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 20px; background-color: {header_color}; color: #ffffff; font-size: 11px; font-weight: 600;">
+                                    GITLAB CI PIPELINE
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; padding: 20px;">
+                        <p style="font-size: 12px; color: #9ca3af;">
+                            &copy; {PROJECT_NAME} &bull; Code Quality Assurance
                         </p>
                     </div>
                 </body>
@@ -1199,7 +1270,7 @@ class GetxMrChecker:
             """
 
             msg = MIMEMultipart()
-            msg['From'] = f"Email Test Project CI <{SMTP_SENDER}>"
+            msg['From'] = f"{PROJECT_NAME} CI <{SMTP_SENDER}>"
             msg['To'] = ", ".join(EMAIL_RECIPIENTS)
             msg['Subject'] = f"Code Quality Report: {status} - MR !{self.mr_iid}"
 
@@ -1217,7 +1288,7 @@ class GetxMrChecker:
     def run_all_checks(self) -> bool:
         """Execute all validation checks and return overall pass/fail."""
         print("\n" + "="*70)
-        print("🔍 Email Test Project - GitLab MR Checker")
+        print(f"🔍 {PROJECT_NAME} - GitLab MR Checker")
         print("="*70 + "\n")
         
         # Fetch MR data
@@ -1342,106 +1413,153 @@ class GetxMrChecker:
             all_issues['Asset Usage'] = issues
 
         
-        # Print results to console
+        # Categorize results for different stakeholders
+        categories = {
+            '🛡️ Security & Privacy': [],
+            '🏗️ Architectural Integrity': [],
+            '✨ Code Quality & Best Practices': []
+        }
+        
+        # Mapping checks to human-friendly categories
+        check_mapping = {
+            'Sensitive Files': '🛡️ Security & Privacy',
+            'API Keys/Secrets': '🛡️ Security & Privacy',
+            'File Naming': '🏗️ Architectural Integrity',
+            'Folder Structure': '🏗️ Architectural Integrity',
+            'GetX Navigation': '🏗️ Architectural Integrity',
+            'GetX Dependency Injection': '🏗️ Architectural Integrity',
+            'Smart Widgets': '🏗️ Architectural Integrity',
+            'Hardcoded Strings': '✨ Code Quality & Best Practices',
+            'Print Statements': '✨ Code Quality & Best Practices',
+            'WIP Commits': '✨ Code Quality & Best Practices',
+            'TODO Comments': '✨ Code Quality & Best Practices',
+            'Flutter ScreenUtil': '✨ Code Quality & Best Practices',
+            'Empty Catch Blocks': '✨ Code Quality & Best Practices',
+            'GetX Utils Usage': '✨ Code Quality & Best Practices',
+            'Asset Usage': '✨ Code Quality & Best Practices'
+        }
+
         critical_failures = 0
         warnings = 0
         info_issues = 0
+        total_checks = len(all_checks)
+        passed_checks = 0
         
         for passed, message, severity in all_checks:
-            print(message)
-            print()
-            if not passed:
-                if severity == 'critical':
-                    critical_failures += 1
-                elif severity == 'warning':
-                    warnings += 1
-                elif severity == 'info':
-                    info_issues += 1
-        
-        # Build comment for MR - focus on critical issues only
-        all_passed = critical_failures == 0
-        
-        if all_passed:
-            if warnings == 0:
-                status_emoji = "✅ **CODE QUALITY CHECKS PASSED**"
-            else:
-                status_emoji = f"⚠️  **PASSED WITH {warnings} WARNING(S)**"
+            if passed: passed_checks += 1
             
-            if info_issues > 0:
-                status_emoji += f"\n\nℹ️  **{info_issues} SUGGESTION(S)** (non-blocking)"
-        else:
-            status_emoji = f"❌ **BLOCKING ISSUES FOUND** ({critical_failures} critical issue(s))"
+            # Find category
+            category = '✨ Code Quality & Best Practices' # Default category
+            # Iterate through check_mapping to find a matching key in the message
+            # This is a heuristic, a more robust solution would be to pass check_name directly
+            for check_name_key, cat in check_mapping.items():
+                if check_name_key in message: # Assuming message contains the check name
+                    category = cat
+                    break
+            categories[category].append((passed, message, severity))
+
+            # Logic for final status
+            if not passed:
+                if severity == 'critical': critical_failures += 1
+                elif severity == 'warning': warnings += 1
+                elif severity == 'info': info_issues += 1
         
-        comment = f"""## 🤖 Email Test Project Code Quality Check
+        pass_rate = int((passed_checks / total_checks) * 100) if total_checks > 0 else 0
+        
+        # Build Dashboard-style comment
+        if critical_failures == 0:
+            status_title = "✅ READY FOR REVIEW" if warnings == 0 else "⚠️  REVIEW WITH CAUTION"
+            status_color = "#28a745" if warnings == 0 else "#ffc107"
+        else:
+            status_title = "❌ ACTION REQUIRED"
+            status_color = "#dc3545"
 
-{status_emoji}
+        comment = f"""# Quality Dashboard: {PROJECT_NAME}
 
-> **Focus**: Code quality, security, and maintainability. Process suggestions are non-blocking.
+| Status | Health Score | Critical Issues | Improvements |
+| :--- | :--- | :--- | :--- |
+| **{status_title}** | **{pass_rate}%** | **{critical_failures}** | **{warnings + info_issues}** |
 
 ---
 
-### Check Summary
+### 📊 Executive Summary
+This automated review ensures that the project maintains high security standards, a scalable architecture, and localized, high-quality code.
 
 """
-        
-        for passed, message, severity in all_checks:
-            comment += message + "\n\n"
-        
-        # Add detailed issues if any
+        for cat_name, results in categories.items():
+            cat_passed = all(r[0] for r in results)
+            status_icon = "🟢" if cat_passed else "🟡" if any(not r[0] and r[2] != 'critical' for r in results) else "🔴"
+            comment += f"#### {status_icon} {cat_name}\n"
+            for p, m, s in results:
+                icon = "✅" if p else ("❌" if s == 'critical' else "⚠️")
+                comment += f"- {icon} {m}\n"
+            comment += "\n"
+
         if all_issues:
-            comment += "\n---\n\n### 📋 Details & Recommendations\n\n"
+            comment += "--- \n\n### 🔧 Developer Action Items\n"
             for check_name, issue_list in all_issues.items():
                 if issue_list:
-                    comment += f"**{check_name}:**\n"
-                    for issue in issue_list[:5]:  # Limit to first 5 issues per check
-                        comment += f"{issue}\n"
-                    comment += "\n"
-        
-        comment += """---
+                    comment += f"<details>\n<summary><b>{check_name}</b> ({len(issue_list)} items)</summary>\n\n"
+                    for issue in issue_list[:10]:
+                        comment += f"- {issue}\n"
+                    comment += "\n</details>\n"
 
-### 📚 Quick References
-
-- **Conventional Commits**: `type(scope): description` where type is feat, fix, docs, etc.
-- **File Naming**: Controllers: `*_controller.dart`, Pages: `*_page.dart`
-- **Localization**: Use `LocaleKeys.keyName.tr` instead of hardcoded strings
-- **Asset Usage**: Use `Assets.images.logo` instead of `'assets/images/logo.png'`
-- **GetX Navigation**: Use `Get.toNamed('/route')` instead of `Get.to(Page())`
-- **Dependency Injection**: Use `Bindings` instead of `Get.put()` in view files
-- **UI Utils**: Use `Utils.showSnackbar()` instead of `Get.snackbar()`
-- **TODO Format**: `// TODO: TENT-123 - description`
-- **Smart Widgets**: Use SmartText/Row/Column instead of basic widgets
-- **Flutter ScreenUtil**: Use .w/.h/.sp/.r extensions for responsive design
-
-
-For full guidelines, see the project's MR rules documentation.
-
+        comment += f"""
 ---
-
-*Generated by Email Test Project GitLab CI MR Checker*
+*Generated by {PROJECT_NAME} CI Automation*
 """
+
+        # Prepare formatted HTML for email
+        email_status = f"{status_title} ({pass_rate}%)"
+        email_html = f"""
+        <div style="background-color: {status_color}; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 28px;">{pass_rate}%</h1>
+            <p style="margin: 5px 0 0 0; font-weight: 600; text-transform: uppercase;">Health Score</p>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <tr style="background-color: #f8f9fa;">
+                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: left;">Category</th>
+                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">Status</th>
+            </tr>
+        """
+        
+        for cat_name, results in categories.items():
+            cat_passed = all(r[0] for r in results)
+            cat_status = "✅ PASSED" if cat_passed else "⚠️ ISSUES"
+            cat_color = "#28a745" if cat_passed else "#ffc107"
+            email_html += f"""
+            <tr>
+                <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{cat_name}</strong></td>
+                <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center; color: {cat_color}; font-weight: bold;">{cat_status}</td>
+            </tr>
+            """
+        
+        email_html += "</table>"
+        
+        # Add detailed check results to email
+        email_html += "<h3 style='color: #1f2937; margin-top: 30px;'>Detailed Check Results</h3>"
+        for cat_name, results in categories.items():
+            email_html += f"<div style='margin-bottom: 15px;'><strong style='color: #4b5563;'>{cat_name}:</strong><br><ul style='margin: 5px 0; padding-left: 20px; font-size: 14px;'>"
+            for p, m, s in results:
+                icon = "✅" if p else ("❌" if s == 'critical' else "⚠️")
+                email_html += f"<li style='margin-bottom: 3px;'>{icon} {m}</li>"
+            email_html += "</ul></div>"
         
         # Post comment to MR
         self.post_comment(comment)
 
         # Send email report if recipients are configured
         if EMAIL_RECIPIENTS:
-            self.send_email_report(status_emoji, comment)
+            self.send_email_report(email_status, email_html)
         
-        # Print final result
-        print("-"*70)
-        if all_passed:
-            if warnings > 0:
-                print(f"⚠️  Code quality checks PASSED with {warnings} warning(s)")
-            else:
-                print("✅ Code quality checks PASSED")
-            
-            if info_issues > 0:
-                print(f"ℹ️  {info_issues} suggestion(s) for process improvements (non-blocking)")
-        else:
-            print(f"❌ {critical_failures} blocking issue(s) found - fix required")
-        print("="*70 + "\n")
+        # Print final result for logs
+        print("\n" + "-"*70)
+        print(f"📊 Quality Score: {pass_rate}%")
+        print(f"Status: {status_title}")
+        print("-" * 70 + "\n")
         
-        return all_passed
+        return critical_failures == 0
 
 
 def main():

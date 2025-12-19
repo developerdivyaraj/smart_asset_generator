@@ -675,7 +675,6 @@ Future<void> generateGetxPrChecker({
   String fileName = 'pr_checker.py',
   String projectLabel = 'GetX Project',
   String gitlabToken = '',
-  List<String> emails = const [],
   bool overwrite = false,
 }) async {
   final directory = Directory(directoryPath);
@@ -691,12 +690,10 @@ Future<void> generateGetxPrChecker({
   }
 
   final tokenLiteral = gitlabToken.isEmpty ? 'None' : jsonEncode(gitlabToken);
-  final emailsLiteral = jsonEncode(emails);
 
   final content = getxPrCheckerTemplate
       .replaceAll('{{PROJECT_LABEL}}', projectLabel)
-      .replaceAll('{{GITLAB_TOKEN_LITERAL}}', tokenLiteral)
-      .replaceAll('{{EMAIL_RECIPIENTS_LITERAL}}', emailsLiteral);
+      .replaceAll('{{GITLAB_TOKEN_LITERAL}}', tokenLiteral);
 
   await file.writeAsString(content);
   await _ensureGitlabCiConfiguration();

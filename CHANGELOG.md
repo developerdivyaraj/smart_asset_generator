@@ -1,3 +1,12 @@
+## 0.2.0
+
+- **PR Checker Redesign**: Introduced a Stakeholder-Friendly Quality Dashboard with Health Scores, Executive Summaries, and categorized business impacts (Security, Architecture, Quality).
+- **Secure Email Management**: Moved recipient configuration to GitLab CI/CD environment variables for centralized PM control and better security.
+- **Gmail App Password Support**: Improved SMTP reliability and added comprehensive documentation for setting up App Passwords.
+- **Smart Recipient Detection**: Integrated logic to prioritize environment-driven email lists over generated fallbacks.
+- **Dashboard UI Enhancements**: Added expandable technical details for developers while keeping the main report clean for managers and clients.
+- **Improved Scaffolding**: Refined `.gitlab-ci.yml` automatic configuration for better pipeline integration.
+
 ## 0.1.0
 
 - Added `prchecker` CLI command that scaffolds `.gitlab/pr_checker.py` from a reusable template.

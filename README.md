@@ -42,8 +42,7 @@ In your Flutter/Dart project’s `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  smart_asset_generator:
-    path: ../smart_asset_generator  # adjust path as needed
+  smart_asset_generator: <latest_version>
 ```
 
 Then run:
@@ -291,69 +290,63 @@ You can visit this website to create apiKey https://loadly.io/doc/view/api
 
 ---
 
-### ✅ Scaffold GitLab PR Checker
+### 🛡️ GitLab PR Checker & Quality Dashboard
+
+Transform your Merge Requests into a professional quality gate. This tool generates a stakeholder-friendly dashboard that reviews code security, architecture, and best practices.
+
+#### 📊 What it does:
+- **Executive Scorecard**: A high-level health score for PMs and Clients.
+- **Categorized Business Impact**: Issues are grouped by *Security*, *Architecture*, and *Quality*.
+- **Direct Developer Feedback**: Expandable technical details with file/line numbers for developers.
+- **Automated Emails**: Beautiful, branded email reports sent to your team.
+
+#### 🚀 Quick Setup
 
 ```bash
-dart run smart_asset_generator prchecker [dir=.gitlab] [file=pr_checker.py] [label="My GetX App"] [token=YOUR_TOKEN] [emails=dev1@example.com,dev2@example.com] [overwrite=true]
-```
-Example:
-```bash
-dart run smart_asset_generator prchecker dir=.gitlab file=pr_checker.py label="Universal GetX" token="glpat-xxxxxxxxxxxxxxxx" emails=admin@example.com overwrite=true
+# Basic setup
+dart run smart_asset_generator prchecker label="Ashraf Rewamp"
+
+# Update an existing checker
+dart run smart_asset_generator prchecker label="Ashraf Rewamp" overwrite=true
 ```
 
 | Argument     | Required | Description                                                  |
 |--------------|----------|--------------------------------------------------------------|
-| `dir`        | ❌       | Target directory (default: `.gitlab`)                         |
-| `file`       | ❌       | Output filename (default: `pr_checker.py`)                    |
-| `label`      | ❌       | Display name used in the generated comments (default: `GetX Project`) |
-| `token`      | ❌       | Personal Access Token baked into the script as fallback for `GITLAB_TOKEN` |
-| `emails`     | ❌       | Comma-separated list of emails to receive report notifications |
-| `overwrite`  | ❌       | Set to `true` to replace an existing file                     |
+| `label`      | ❌       | Branded project name used in dashboard & emails (e.g. "Ashraf Rewamp") |
+| `token`      | ❌       | Personal Access Token fallback (Not recommended; use CI variables instead) |
+| `overwrite`  | ❌       | Set to `true` to update the script with the latest UI features |
 
-#### 📧 Email Notifications Setup
+---
 
-To enable email reports, the script requires SMTP configuration. You should set these as CI/CD variables in GitLab:
+#### 🔒 Secure Email Management
+For maximum security and ease of management, email recipients are **controlled centrally** via GitLab. Developers cannot change who receives these reports in the source code.
 
-- `SMTP_SERVER`: Your SMTP server address (default: `smtp.gmail.com`).
-- `SMTP_PORT`: SMTP port (default: `587`).
-- `SMTP_USER`: Your SMTP username/email.
-- `SMTP_PASSWORD`: Your SMTP password or App Password (recommended).
-- `SMTP_SENDER`: Optional sender name or email.
+1.  **Go to GitLab Dashboard**: Navigate to **Settings > CI/CD > Variables**.
+2.  **Add Management Emails**:
+    - **Key**: `PR_CHECKER_EMAILS`
+    - **Value**: `manager@company.com, client@domain.com` (comma-separated).
+#### 🔐 Required CI/CD Variables
+To enable the full Dashboard and Email features, add these **4 variables** in your GitLab Project **Settings > CI/CD > Variables**:
 
-#### ✅ Example
+1.  **`GITLAB_TOKEN`**: A Personal Access Token with `api` scope (Enable **Masked**).
+2.  **`PR_CHECKER_EMAILS`**: Comma-separated list of recipients (e.g., `pm@co.com, client@co.com`).
+3.  **`SMTP_USER`**: Your sender email (e.g., `reports@yourcompany.com`).
+4.  **`SMTP_PASSWORD`**: Your **App Password** (See below how to generate).
 
-```bash
-dart run smart_asset_generator prchecker overwrite=true
-```
+---
 
-**Creates / updates:**
-```
-.gitlab/pr_checker.py
-.gitlab-ci.yml (adds `mr-check` stage and `pr_checks` job if missing)
-```
+#### � How to get a Gmail App Password
+If you are using Gmail, your regular password will not work. You must generate an "App Password":
+1.  Go to your [Google Account Settings](https://myaccount.google.com/).
+2.  Navigate to **Security**.
+3.  Under "How you sign in to Google," ensure **2-Step Verification** is ON.
+4.  Click on **2-Step Verification**, then scroll to the bottom and click **App Passwords**.
+5.  Enter a name (e.g., "GitLab PR Checker") and click **Create**.
+6.  **Copy the 16-character code** and paste it as your `SMTP_PASSWORD` in GitLab.
 
-Once generated, make the script executable and ensure GitLab CI/CD variables `CI_PROJECT_ID`, `CI_MERGE_REQUEST_IID`, and `GITLAB_TOKEN` are configured for the pipeline.
+---
 
-> ⚠️ If you provide `token=...`, the value is written in plain text inside `.gitlab/pr_checker.py`. Prefer using environment variables in CI where possible.
-
-#### 🔐 Required CI Variables
-
-- `CI_PROJECT_ID`: Automatically provided by GitLab CI/CD when the job runs in a merge request pipeline. For local testing, copy it from your project’s **Settings → General → General project settings** (Project ID field).
-- `CI_MERGE_REQUEST_IID`: Available in merge request pipelines as the internal ID (IID). You can find it in the merge request URL (the number after `/merge_requests/`), or via GitLab API: `GET /projects/:id/merge_requests`.
-- `GITLAB_TOKEN`: Personal Access Token or CI job token with API scope used to call GitLab endpoints. Create one under **User Settings → Access Tokens**, enable `api`, then store it as a masked CI/CD variable (e.g., `Settings → CI/CD → Variables`).
-
-##### Add `GITLAB_TOKEN` via GitLab UI
-
-1. Navigate to your project’s **Settings → CI/CD → Variables** section.
-2. Click **Add variable** to open the dialog (see screenshot).
-3. Set **Key** to `GITLAB_TOKEN`.
-4. Paste the personal access token into **Value**.
-5. Keep **Type** as `Variable`, scope as `All (default)`.
-6. Enable **Protect variable** if you only want it available on protected branches/tags.
-7. Enable **Mask variable** so the value never appears in logs.
-8. Click **Add variable** to save.
-
-> Screenshot reference: GitLab “Add variable” dialog highlighting `Key`, `Value`, and the `Protect`/`Mask` flags.
+> **Note**: This setup is "set and forget." Once configured in GitLab, every new Merge Request will automatically generate a professional quality report.
 
 ---
 
