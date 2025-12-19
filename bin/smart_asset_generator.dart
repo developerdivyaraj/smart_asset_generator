@@ -144,6 +144,8 @@ Future<void> _handlePrChecker(List<String> args) async {
   final fileName = argsMap['file'] ?? 'pr_checker.py';
   final projectLabel = argsMap['label'] ?? 'GetX Project';
   final gitlabToken = argsMap['token'] ?? '';
+  final emailsStr = argsMap['emails'] ?? '';
+  final emails = emailsStr.isEmpty ? <String>[] : emailsStr.split(',').map((e) => e.trim()).toList();
   final overwrite =
       args.contains('--overwrite') || _isTruthy(argsMap['overwrite']);
 
@@ -152,6 +154,7 @@ Future<void> _handlePrChecker(List<String> args) async {
     fileName: fileName,
     projectLabel: projectLabel,
     gitlabToken: gitlabToken,
+    emails: emails,
     overwrite: overwrite,
   );
 }
@@ -296,7 +299,7 @@ void _printUsage() {
   );
   print(
     '  dart run smart_asset_generator prchecker [dir=.gitlab] [file=pr_checker.py] '
-    '[label="My GetX App"] [token=YOUR_TOKEN] [overwrite=true]',
+    '[label="My GetX App"] [token=YOUR_TOKEN] [emails=a@b.com,c@d.com] [overwrite=true]',
   );
   print(
     '  dart run smart_asset_generator clone '

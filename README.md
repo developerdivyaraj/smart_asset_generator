@@ -294,11 +294,11 @@ You can visit this website to create apiKey https://loadly.io/doc/view/api
 ### ✅ Scaffold GitLab PR Checker
 
 ```bash
-dart run smart_asset_generator prchecker [dir=.gitlab] [file=pr_checker.py] [label="My GetX App"] [token=YOUR_TOKEN] [overwrite=true]
+dart run smart_asset_generator prchecker [dir=.gitlab] [file=pr_checker.py] [label="My GetX App"] [token=YOUR_TOKEN] [emails=dev1@example.com,dev2@example.com] [overwrite=true]
 ```
 Example:
 ```bash
-dart run smart_asset_generator prchecker dir=.gitlab file=pr_checker.py label="Universal GetX" token="glpat-xxxxxxxxxxxxxxxx" overwrite=true
+dart run smart_asset_generator prchecker dir=.gitlab file=pr_checker.py label="Universal GetX" token="glpat-xxxxxxxxxxxxxxxx" emails=admin@example.com overwrite=true
 ```
 
 | Argument     | Required | Description                                                  |
@@ -307,7 +307,18 @@ dart run smart_asset_generator prchecker dir=.gitlab file=pr_checker.py label="U
 | `file`       | ❌       | Output filename (default: `pr_checker.py`)                    |
 | `label`      | ❌       | Display name used in the generated comments (default: `GetX Project`) |
 | `token`      | ❌       | Personal Access Token baked into the script as fallback for `GITLAB_TOKEN` |
+| `emails`     | ❌       | Comma-separated list of emails to receive report notifications |
 | `overwrite`  | ❌       | Set to `true` to replace an existing file                     |
+
+#### 📧 Email Notifications Setup
+
+To enable email reports, the script requires SMTP configuration. You should set these as CI/CD variables in GitLab:
+
+- `SMTP_SERVER`: Your SMTP server address (default: `smtp.gmail.com`).
+- `SMTP_PORT`: SMTP port (default: `587`).
+- `SMTP_USER`: Your SMTP username/email.
+- `SMTP_PASSWORD`: Your SMTP password or App Password (recommended).
+- `SMTP_SENDER`: Optional sender name or email.
 
 #### ✅ Example
 

@@ -8,9 +8,20 @@ import os
 import sys
 import re
 import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Tuple, Set
 
 DEFAULT_GITLAB_TOKEN = {{GITLAB_TOKEN_LITERAL}}
+EMAIL_RECIPIENTS = {{EMAIL_RECIPIENTS_LITERAL}}
+
+# SMTP Configuration (Preferably set via CI/CD variables)
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USER = os.getenv('SMTP_USER')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+SMTP_SENDER = os.getenv('SMTP_SENDER', SMTP_USER)
 
 class GetxMrChecker:
     """Handles all MR validation checks for {{PROJECT_LABEL}} Flutter project."""
@@ -998,6 +1009,156 @@ class GetxMrChecker:
             if len(checked_file_names) > 5:
                 files_list += f" and {len(checked_file_names) - 5} more"
             return False, f"❌ **API Keys/Secrets**: {len(violations)} potential leak(s) in {checked_files} files ({files_list}):\n{violations_list}", issues
+
+    def check_empty_catch_blocks(self, changes: List[Dict]) -> Tuple[bool, str, List[str]]:
+        """Check for empty catch blocks."""
+        violations = []
+        issues = []
+        checked_files = 0
+        
+        for change in changes:
+            file_path = change.get('new_path', '')
+            if not file_path.endswith('.dart'):
+                continue
+            
+            checked_files += 1
+            content = self.get_file_content(file_path)
+            if not content:
+                continue
+            
+            # Match catch blocks with only whitespace or comments inside
+            pattern = r'catch\s*\([^)]*\)\s*\{\s*(?://.*|/\*[\s\S]*?\*/|\s)*\}'
+            matches = re.finditer(pattern, content)
+            for match in matches:
+                line_num = content[:match.start()].count('\n') + 1
+                violations.append(f"  - `{file_path}:{line_num}` empty catch block")
+        
+        if not violations:
+            return True, f"✅ **Empty Catch Blocks**: None found", issues
+        else:
+            issues.append("Avoid empty catch blocks; at least log the error")
+            issues.extend(violations[:10])
+            return False, f"❌ **Empty Catch Blocks**: {len(violations)} found", issues
+
+    def check_getx_navigation(self, changes: List[Dict]) -> Tuple[bool, str, List[str]]:
+        """Check for Get.to() usage (prefer Get.toNamed())."""
+        violations = []
+        issues = []
+        
+        for change in changes:
+            file_path = change.get('new_path', '')
+            if not file_path.endswith('.dart'):
+                continue
+            
+            content = self.get_file_content(file_path)
+            if not content:
+                continue
+            
+            pattern = r'Get\.to\('
+            matches = re.finditer(pattern, content)
+            for match in matches:
+                line_num = content[:match.start()].count('\n') + 1
+                violations.append(f"  - `{file_path}:{line_num}` use Get.toNamed() instead of Get.to()")
+        
+        if not violations:
+            return True, f"✅ **GetX Navigation**: All follow naming conventions", issues
+        else:
+            issues.append("Use `Get.toNamed()` for better route management")
+            issues.extend(violations[:10])
+            return False, f"❌ **GetX Navigation**: {len(violations)} violation(s)", issues
+
+    def check_getx_dependency_injection(self, changes: List[Dict]) -> Tuple[bool, str, List[str]]:
+        """Check for Get.put() in widgets (prefer Bindings)."""
+        violations = []
+        issues = []
+        
+        for change in changes:
+            file_path = change.get('new_path', '')
+            if not file_path.endswith('.dart') or ('/view/' not in file_path and '/widgets/' not in file_path):
+                continue
+            
+            content = self.get_file_content(file_path)
+            if not content:
+                continue
+            
+            pattern = r'Get\.put\('
+            matches = re.finditer(pattern, content)
+            for match in matches:
+                line_num = content[:match.start()].count('\n') + 1
+                violations.append(f"  - `{file_path}:{line_num}` use Bindings instead of Get.put() in widgets")
+        
+        if not violations:
+            return True, f"✅ **GetX Dependency Injection**: Proper usage found", issues
+        else:
+            issues.append("Define dependencies in `Bindings` instead of using `Get.put()` in view files")
+            issues.extend(violations[:10])
+            return False, f"❌ **GetX Dependency Injection**: {len(violations)} violation(s)", issues
+
+    def check_hardcoded_assets(self, changes: List[Dict]) -> Tuple[bool, str, List[str]]:
+        """Check for hardcoded asset paths (prefer generated Assets class)."""
+        violations = []
+        issues = []
+        
+        asset_string_pattern = r'["\']assets/[\w/-]+\.\w+["\']'
+        
+        for change in changes:
+            file_path = change.get('new_path', '')
+            if not file_path.endswith('.dart'):
+                continue
+            
+            if 'assets.g.dart' in file_path or 'app_assets.g.dart' in file_path:
+                continue
+                
+            content = self.get_file_content(file_path)
+            if not content:
+                continue
+                
+            matches = re.finditer(asset_string_pattern, content)
+            for match in matches:
+                line_num = content[:match.start()].count('\n') + 1
+                violations.append(f"  - `{file_path}:{line_num}` hardcoded asset path: {match.group(0)}")
+        
+        if not violations:
+            return True, f"✅ **Asset Usage**: All follow generated class pattern", issues
+        else:
+            issues.append("Use generated asset classes (e.g., `Assets.images.logo`) instead of hardcoded strings")
+            issues.extend(violations[:10])
+            return False, f"❌ **Asset Usage**: {len(violations)} hardcoded path(s) found", issues
+
+    def check_getx_utils_usage(self, changes: List[Dict]) -> Tuple[bool, str, List[str]]:
+        """Enforce usage of custom Utils for snackbars, dialogs, and bottom sheets."""
+        violations = []
+        issues = []
+        
+        forbidden_getx_calls = {
+            r'Get\.snackbar\(': 'Utils.showSnackbar()',
+            r'Get\.defaultDialog\(': 'Utils.showDialog()',
+            r'Get\.dialog\(': 'Utils.showDialog()',
+            r'Get\.bottomSheet\(': 'Utils.showBottomSheet()',
+        }
+        
+        for change in changes:
+            file_path = change.get('new_path', '')
+            if not file_path.endswith('.dart'):
+                continue
+                
+            content = self.get_file_content(file_path)
+            if not content:
+                continue
+            
+            for pattern, replacement in forbidden_getx_calls.items():
+                matches = re.finditer(pattern, content)
+                for match in matches:
+                    line_num = content[:match.start()].count('\n') + 1
+                    violations.append(f"  - `{file_path}:{line_num}` use {replacement} instead of {match.group(0).rstrip('(')}()")
+        
+        if not violations:
+            return True, f"✅ **GetX Utils Usage**: Custom utilities used correctly", issues
+        else:
+            issues.append("Use project-specific `Utils` class for consistent UI feedback")
+            issues.extend(violations[:10])
+            return False, f"❌ **GetX Utils Usage**: {len(violations)} direct GetX UI call(s) found", issues
+
     
     def post_comment(self, message: str):
         """Post a comment on the MR."""
@@ -1010,6 +1171,48 @@ class GetxMrChecker:
             print("✅ Comment posted to MR successfully")
         except requests.RequestException as e:
             print(f"⚠️  Warning: Failed to post comment: {e}")
+
+    def send_email_report(self, status: str, report_body: str):
+        """Send the MR report via email."""
+        if not all([SMTP_SERVER, SMTP_USER, SMTP_PASSWORD]):
+            print("⚠️  Warning: Email configuration (SMTP_USER/SMTP_PASSWORD) missing. Skipping email report.")
+            return
+
+        print(f"📧 Sending email report to: {', '.join(EMAIL_RECIPIENTS)}...")
+        
+        try:
+            # Convert markdown-ish report to basic HTML
+            html_body = f"""
+            <html>
+                <body style="font-family: sans-serif; line-height: 1.6; color: #333;">
+                    <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                        <h2 style="color: #2c3e50;">{status}</h2>
+                        <div style="background-color: #f9f9f9; padding: 15px; border-left: 5px solid #3498db; margin: 20px 0;">
+                            {report_body.replace('\n', '<br>')}
+                        </div>
+                        <p style="font-size: 0.8em; color: #777; border-top: 1px solid #eee; padding-top: 10px; margin-top: 20px;">
+                            This is an automated report from the Code Quality Checker CI pipeline.
+                        </p>
+                    </div>
+                </body>
+            </html>
+            """
+
+            msg = MIMEMultipart()
+            msg['From'] = f"{{PROJECT_LABEL}} CI <{SMTP_SENDER}>"
+            msg['To'] = ", ".join(EMAIL_RECIPIENTS)
+            msg['Subject'] = f"Code Quality Report: {status} - MR !{self.mr_iid}"
+
+            msg.attach(MIMEText(html_body, 'html'))
+
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+                
+            print("✅ Email report sent successfully")
+        except Exception as e:
+            print(f"⚠️  Warning: Failed to send email report: {e}")
     
     def run_all_checks(self) -> bool:
         """Execute all validation checks and return overall pass/fail."""
@@ -1109,6 +1312,35 @@ class GetxMrChecker:
         all_checks.append((passed, msg, 'critical'))
         if issues:
             all_issues['Smart Widgets'] = issues
+
+        # Code quality - Empty catch blocks
+        passed, msg, issues = self.check_empty_catch_blocks(changes)
+        all_checks.append((passed, msg, 'warning'))
+        if issues:
+            all_issues['Empty Catch Blocks'] = issues
+
+        # GetX Specific Checks
+        passed, msg, issues = self.check_getx_navigation(changes)
+        all_checks.append((passed, msg, 'warning'))
+        if issues:
+            all_issues['GetX Navigation'] = issues
+
+        passed, msg, issues = self.check_getx_dependency_injection(changes)
+        all_checks.append((passed, msg, 'warning'))
+        if issues:
+            all_issues['GetX Dependency Injection'] = issues
+
+        passed, msg, issues = self.check_getx_utils_usage(changes)
+        all_checks.append((passed, msg, 'warning'))
+        if issues:
+            all_issues['GetX Utils Usage'] = issues
+
+        # Asset Usage Check
+        passed, msg, issues = self.check_hardcoded_assets(changes)
+        all_checks.append((passed, msg, 'warning'))
+        if issues:
+            all_issues['Asset Usage'] = issues
+
         
         # Print results to console
         critical_failures = 0
@@ -1172,9 +1404,14 @@ class GetxMrChecker:
 - **Conventional Commits**: `type(scope): description` where type is feat, fix, docs, etc.
 - **File Naming**: Controllers: `*_controller.dart`, Pages: `*_page.dart`
 - **Localization**: Use `LocaleKeys.keyName.tr` instead of hardcoded strings
+- **Asset Usage**: Use `Assets.images.logo` instead of `'assets/images/logo.png'`
+- **GetX Navigation**: Use `Get.toNamed('/route')` instead of `Get.to(Page())`
+- **Dependency Injection**: Use `Bindings` instead of `Get.put()` in view files
+- **UI Utils**: Use `Utils.showSnackbar()` instead of `Get.snackbar()`
 - **TODO Format**: `// TODO: TENT-123 - description`
 - **Smart Widgets**: Use SmartText/Row/Column instead of basic widgets
 - **Flutter ScreenUtil**: Use .w/.h/.sp/.r extensions for responsive design
+
 
 For full guidelines, see the project's MR rules documentation.
 
@@ -1185,6 +1422,10 @@ For full guidelines, see the project's MR rules documentation.
         
         # Post comment to MR
         self.post_comment(comment)
+
+        # Send email report if recipients are configured
+        if EMAIL_RECIPIENTS:
+            self.send_email_report(status_emoji, comment)
         
         # Print final result
         print("-"*70)
