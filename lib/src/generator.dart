@@ -47,8 +47,7 @@ Future<void> generateAssets({
           .toList();
 
   for (var file in files) {
-    final relativePath = file.path
-        .replaceAll('\\', '/');
+    final relativePath = file.path.replaceAll('\\', '/');
     final fileName = relativePath.split('/').last;
     final varName = _toCamelCase(fileName.replaceAll(RegExp(r'\.\w+$'), ''));
     buffer.writeln("  static const String $varName = '$relativePath';");
@@ -153,11 +152,12 @@ Future<void> generateModule({
   final viewPath = '$location/$name/view/${snake}_page.dart';
 
   // Confirm overwrite if any file exists
-  final existingFiles = [
-    File(bindingPath),
-    File(controllerPath),
-    File(viewPath),
-  ].where((f) => f.existsSync()).toList();
+  final existingFiles =
+      [
+        File(bindingPath),
+        File(controllerPath),
+        File(viewPath),
+      ].where((f) => f.existsSync()).toList();
 
   if (existingFiles.isNotEmpty) {
     stdout.write('⚠️ One or more files already exist. Overwrite? (y/n): ');
@@ -236,7 +236,10 @@ Future<void> cloneProject({
   final pubspecFile = File('${newDir.path}/pubspec.yaml');
   if (await pubspecFile.exists()) {
     final content = await pubspecFile.readAsString();
-    final updated = content.replaceFirst('name: $oldProjectName', 'name: $newProjectName');
+    final updated = content.replaceFirst(
+      'name: $oldProjectName',
+      'name: $newProjectName',
+    );
     await pubspecFile.writeAsString(updated);
   }
 
@@ -244,16 +247,22 @@ Future<void> cloneProject({
   final allFiles = newDir
       .listSync(recursive: true)
       .whereType<File>()
-      .where((f) =>
-  !f.path.endsWith('.png') &&
-      !f.path.endsWith('.jpg') &&
-      !f.path.endsWith('.webp') &&
-      !f.path.contains('/.git/') &&
-      !f.path.contains('/build/'));
+      .where(
+        (f) =>
+            !f.path.endsWith('.png') &&
+            !f.path.endsWith('.jpg') &&
+            !f.path.endsWith('.webp') &&
+            !f.path.contains('/.git/') &&
+            !f.path.contains('/build/'),
+      );
 
   // 4. Rename and update android/{oldProjectName}_android.iml
-  final androidIml = File('${newDir.path}/android/${oldProjectName}_android.iml');
-  final newAndroidIml = File('${newDir.path}/android/${newProjectName}_android.iml');
+  final androidIml = File(
+    '${newDir.path}/android/${oldProjectName}_android.iml',
+  );
+  final newAndroidIml = File(
+    '${newDir.path}/android/${newProjectName}_android.iml',
+  );
 
   if (await androidIml.exists()) {
     final content = await androidIml.readAsString();
@@ -284,13 +293,21 @@ Future<void> cloneProject({
   }
 
   // 6. Update Android package name
-  final androidManifest = File('${newDir.path}/android/app/src/main/AndroidManifest.xml');
+  final androidManifest = File(
+    '${newDir.path}/android/app/src/main/AndroidManifest.xml',
+  );
   final buildGradle = File('${newDir.path}/android/app/build.gradle');
   for (final file in [androidManifest, buildGradle]) {
     if (await file.exists()) {
       var content = await file.readAsString();
-      content = content.replaceAll(RegExp(r'package="[^"]+"'), 'package="$androidPackage"');
-      content = content.replaceAll(RegExp(r'applicationId "[^"]+"'), 'applicationId "$androidPackage"');
+      content = content.replaceAll(
+        RegExp(r'package="[^"]+"'),
+        'package="$androidPackage"',
+      );
+      content = content.replaceAll(
+        RegExp(r'applicationId "[^"]+"'),
+        'applicationId "$androidPackage"',
+      );
       await file.writeAsString(content);
     }
   }
@@ -301,7 +318,7 @@ Future<void> cloneProject({
     var content = await iosPlist.readAsString();
     content = content.replaceAllMapped(
       RegExp(r'<key>CFBundleIdentifier</key>\s*<string>.*</string>'),
-          (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
+      (_) => '<key>CFBundleIdentifier</key>\n\t<string>$iosPackage</string>',
     );
     await iosPlist.writeAsString(content);
   }
@@ -341,7 +358,11 @@ Future<LoadlyUploadResult?> generateAndUploadApkToLoadly({
   final buildType = isRelease ? 'release' : 'debug';
   print('🚀 Building $buildType APK...');
 
-  final buildResult = await Process.run('flutter', ['build', 'apk', '--$buildType']);
+  final buildResult = await Process.run('flutter', [
+    'build',
+    'apk',
+    '--$buildType',
+  ]);
   if (buildResult.exitCode != 0) {
     print('❌ APK build failed:\n${buildResult.stderr}');
     return null;
@@ -360,7 +381,10 @@ Future<LoadlyUploadResult?> generateAndUploadApkToLoadly({
   _Metadata metadata = _getAppMetadata();
   final timestamp = DateFormat('dd-MM-yyyy').format(DateTime.now());
   final readableName = '${metadata.name}(v${metadata.version})$timestamp.apk';
-  final renamedInBuildDirPath = p.join('build/app/outputs/flutter-apk', readableName);
+  final renamedInBuildDirPath = p.join(
+    'build/app/outputs/flutter-apk',
+    readableName,
+  );
   final renamedInBuildDir = await apk.copy(renamedInBuildDirPath);
   print('📂 APK saved in build folder: ${renamedInBuildDir.path}');
 
@@ -405,7 +429,12 @@ Future<LoadlyUploadResult?> generateAndUploadIpaToLoadly({
 
   print('🚀 Building iOS IPA (release)...');
 
-  final buildResult = await Process.run('flutter', ['build', 'ipa','--export-method', 'ad-hoc',]);
+  final buildResult = await Process.run('flutter', [
+    'build',
+    'ipa',
+    '--export-method',
+    'ad-hoc',
+  ]);
   if (buildResult.exitCode != 0) {
     print('❌ IPA build failed:\n${buildResult.stderr}');
     return null;
@@ -418,16 +447,19 @@ Future<LoadlyUploadResult?> generateAndUploadIpaToLoadly({
     print('❌ IPA output directory not found at build/ios/ipa');
     return null;
   }
-  final ipaFiles = ipaDir
-      .listSync()
-      .whereType<File>()
-      .where((f) => f.path.toLowerCase().endsWith('.ipa'))
-      .toList();
+  final ipaFiles =
+      ipaDir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.toLowerCase().endsWith('.ipa'))
+          .toList();
   if (ipaFiles.isEmpty) {
     print('❌ No .ipa found in build/ios/ipa');
     return null;
   }
-  ipaFiles.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+  ipaFiles.sort(
+    (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
+  );
   final ipa = ipaFiles.last;
 
   // Prepare nice filename
@@ -477,11 +509,14 @@ class LoadlyUploadResult {
 Future<void> ensureProjectConfigFile() async {
   final file = File('smart_asset_generator.yaml');
   if (!file.existsSync()) {
-    const defaultContent = '# Smart Asset Generator configuration\n'
+    const defaultContent =
+        '# Smart Asset Generator configuration\n'
         '# Set your Loadly API key here. This is used for apk uploads.\n'
         'loadlyApiKey: ""\n';
     await file.writeAsString(defaultContent);
-    print('📝 Created smart_asset_generator.yaml. Please add your Loadly API key.');
+    print(
+      '📝 Created smart_asset_generator.yaml. Please add your Loadly API key.',
+    );
   }
 }
 
@@ -506,7 +541,9 @@ Future<void> initProjectConfig({bool overwrite = false}) async {
     return;
   }
   await file.writeAsString(_buildProjectConfigTemplate());
-  print('✅ Created smart_asset_generator.yaml with commands and empty Loadly API key.');
+  print(
+    '✅ Created smart_asset_generator.yaml with commands and empty Loadly API key.',
+  );
 }
 
 String _buildProjectConfigTemplate() {
@@ -523,7 +560,6 @@ String _buildProjectConfigTemplate() {
       '  - dart run smart_asset_generator ipa \n'
       '  - dart run smart_asset_generator apps \n'
       '  - dart run smart_asset_generator init\n'
-
       'commands with parameters:\n'
       '  - dart run smart_asset_generator asset <asset_path> [class_name]\n'
       '  - dart run smart_asset_generator barrel <directory_path> [output_file_name]\n'
@@ -535,12 +571,11 @@ String _buildProjectConfigTemplate() {
       '  - dart run smart_asset_generator init\n';
 }
 
-Future<void> setLoadlyApiKey({
-  required String key,
-}) async {
+Future<void> setLoadlyApiKey({required String key}) async {
   final file = File('smart_asset_generator.yaml');
   if (!file.existsSync()) {
-    const header = '# Smart Asset Generator configuration\n'
+    const header =
+        '# Smart Asset Generator configuration\n'
         '# Set your Loadly API key here. This is used for apk uploads.\n';
     await file.writeAsString('${header}loadlyApiKey: "$key"\n');
   } else {
@@ -628,7 +663,9 @@ Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
 
     final respStr = await response.stream.bytesToString();
     if (response.statusCode != 200) {
-      print('❌ Loadly upload failed with status: ${response.statusCode}\n$respStr');
+      print(
+        '❌ Loadly upload failed with status: ${response.statusCode}\n$respStr',
+      );
       return null;
     }
 
@@ -636,7 +673,8 @@ Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
     // Attempt to extract common fields
     dynamic payload = data['data'] ?? data;
     final buildKey = payload['buildKey']?.toString();
-    final installPageUrl = payload['buildURL']?.toString() ?? payload['downloadURL']?.toString();
+    final installPageUrl =
+        payload['buildURL']?.toString() ?? payload['downloadURL']?.toString();
     final shortcutUrl = payload['buildShortcutUrl']?.toString();
     return LoadlyUploadResult(
       buildKey: buildKey,
@@ -653,7 +691,6 @@ Future<LoadlyUploadResult?> uploadToLoadlyWithProgress(
     return null;
   }
 }
-
 
 class _Metadata {
   final String name;
@@ -675,6 +712,7 @@ Future<void> generateGetxPrChecker({
   String fileName = 'pr_checker.py',
   String projectLabel = 'GetX Project',
   String gitlabToken = '',
+  String emails = '',
   bool overwrite = false,
 }) async {
   final directory = Directory(directoryPath);
@@ -690,9 +728,14 @@ Future<void> generateGetxPrChecker({
   }
 
   final tokenLiteral = gitlabToken.isEmpty ? 'None' : jsonEncode(gitlabToken);
+  final emailsLiteral =
+      emails.trim().isEmpty
+          ? '[]'
+          : jsonEncode(emails.split(',').map((e) => e.trim()).toList());
 
   final content = getxPrCheckerTemplate
       .replaceAll('{{PROJECT_LABEL}}', projectLabel)
+      .replaceAll('{{EMAIL_RECIPIENTS_LITERAL}}', emailsLiteral)
       .replaceAll('{{GITLAB_TOKEN_LITERAL}}', tokenLiteral);
 
   await file.writeAsString(content);

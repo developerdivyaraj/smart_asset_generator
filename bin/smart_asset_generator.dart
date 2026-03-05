@@ -144,6 +144,7 @@ Future<void> _handlePrChecker(List<String> args) async {
   final fileName = argsMap['file'] ?? 'pr_checker.py';
   final projectLabel = argsMap['label'] ?? 'GetX Project';
   final gitlabToken = argsMap['token'] ?? '';
+  final emails = argsMap['emails'] ?? '';
   final overwrite =
       args.contains('--overwrite') || _isTruthy(argsMap['overwrite']);
 
@@ -152,6 +153,7 @@ Future<void> _handlePrChecker(List<String> args) async {
     fileName: fileName,
     projectLabel: projectLabel,
     gitlabToken: gitlabToken,
+    emails: emails,
     overwrite: overwrite,
   );
 }

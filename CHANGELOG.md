@@ -1,3 +1,8 @@
+## 0.2.1
+
+- **GitLab Token Fallback**: The PR checker script now properly falls back to `CI_JOB_TOKEN` if `GITLAB_TOKEN` is not specified, preventing `401 Unauthorized` errors when posting comments to Merge Requests.
+- **Configurable Email Notifications**: Added `emails` parameter to the `prchecker` command (e.g. `dart run smart_asset_generator prchecker emails="dev@company.com"`) to define recipients inside the generated Python script securely.
+
 ## 0.2.0
 
 - **PR Checker Redesign**: Introduced a Stakeholder-Friendly Quality Dashboard with Health Scores, Executive Summaries, and categorized business impacts (Security, Architecture, Quality).
